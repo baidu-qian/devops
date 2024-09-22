@@ -1,0 +1,159 @@
+/*
+ * @Author: magician
+ * @Date: 2023-10-25 01:38:20
+ * @LastEditors: magician
+ * @LastEditTime: 2024-07-25 00:29:14
+ * @FilePath: /go/src/go_code/es/weixin/config.yaml
+ * @Description: 
+ * 
+ * Copyright (c) 2024 by ${git_name_email}, All Rights Reserved. 
+ */
+database:
+  es:
+    url: http://172.16.0.30:9200
+    username: elastic
+    password: xxxxxx
+    enable: true
+  weixin:
+    webhook: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxxxxxxxxxxxxx
+    enable: true
+  email:
+    enable: true
+    smtp: smtp.qq.com
+    port: 465
+    login_user: xxxx@xxxx.com
+    login_pass: xxxxxxx
+    from_addr: xxxx@xxx.com
+    to_addr: 
+      - 邮件1
+      - 邮件2
+  prometheus:
+    username: xxxxx
+    password: xxxx
+  postgres:
+    - ip: 172.16.0.40
+      port: 5432
+      database: xxx
+      username: xxx
+      password: xxx
+      enable: true
+  kafka:
+    brokers: 172.16.0.71:9092,172.16.0.72:9092,172.16.0.73:9092,172.16.0.74:9092,172.16.0.75:9092
+    lag: 10000
+    enable: true
+  hbase:
+    - enable: true
+      ip: 172.16.0.71
+      port: 60010
+    - enable: true
+      ip: 172.16.0.72
+      port: 60010
+    - enable: true
+      ip: 172.16.0.73
+      port: 60010
+    - enable: true
+      ip: 172.16.0.74
+      port: 60010
+    - enable: true
+      ip: 172.16.0.75
+      port: 60010
+  zookeeper:
+    - ip: 172.16.0.71
+      port: 2181
+      enable: true
+    - ip: 172.16.0.72
+      port: 2181
+      enable: true
+    - ip: 172.16.0.73
+      port: 2181
+      enable: true
+    - ip: 172.16.0.74
+      port: 2181
+      enable: true
+    - ip: 172.16.0.75
+      port: 2181
+      enable: true
+  redis:
+    - ip: 172.16.0.40
+      port: 6379
+      password: xxxx
+      enable: true
+  nginx: 
+    - ip: 10.45.41.214
+      port: 6279
+      enable: true
+  kibana: 
+    - ip: 172.16.0.71
+      port: 5601
+      enable: true
+  receiver:
+    - ip: 172.16.0.24
+      port: 6280
+      enable: true
+    - ip: 172.16.0.25
+      port: 6280
+      enable: true
+    - ip: 172.16.0.26
+      port: 6280
+      enable: true
+    - ip: 172.16.0.27
+      port: 6280 
+      enable: true
+  cleaner:
+    - ip: 172.16.0.73
+      port: 15000
+      enable: true
+    - ip: 172.16.0.74
+      port: 15000
+      enable: true
+    - ip: 172.16.0.75
+      port: 15000
+      enable: true
+  security-event:
+    - ip: 172.16.0.71
+      port: 15007
+      enable: true
+    - ip: 172.16.0.72
+      port: 15007
+      enable: true
+    - ip: 172.16.0.73
+      port: 15007
+      enable: true
+    - ip: 172.16.0.74
+      port: 15007
+      enable: true
+    - ip: 172.16.0.75
+      port: 15007
+      enable: true
+  threat:
+    - ip: 172.16.0.28
+      port: 15004
+      enable: true
+  threat-index:
+    - ip: 172.16.0.71
+      port: 15012
+      enable: true
+    - ip: 172.16.0.72
+      port: 15012
+      enable: true
+  transfer:
+    - ip: 172.16.0.29
+      port: 15001
+      enable: true
+  init:
+    - ip: 172.16.0.40
+      port: 8181
+      enable: true
+  web-service:
+    - ip: 172.16.0.40
+      port: 9990
+      enable: true
+  analyzer-dev:
+    - ip: 172.16.0.40
+      port: 15003
+      enable: true
+  web-service-nginx:
+    - ip: 172.16.0.5
+      port: 443
+      enable: true
+  
