@@ -1,0 +1,90 @@
+database:
+  es:
+    url: http://172.16.44.69:9200
+    username: xxxx
+    password: xxxx
+    enable: true
+  weixin:
+    webhook: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxxxx
+    enable: true
+  email:
+    enable: true
+    from_addr: 
+    password: 
+    to_addr: 
+    port: 465
+    smtp_server: smtp.qq.com
+  prometheus:
+    username: 
+    password: 
+  kafka:
+    brokers: 172.16.0.15:9092
+    lag: 100000
+    enable: true
+  zookeeper:
+    - ip: 172.16.0.71
+      port: 2181
+      enable: true
+  postgres:
+    - ip: 172.16.0.40
+      port: 5432
+      database: 
+      username: 
+      password: 
+      enable: true
+  redis:
+    - ip: 10.0.0.40
+      port: 6379
+      password: 
+      enable: true
+  receiver:
+    - ip: 172.16.0.24
+      port: 6280
+      enable: true
+    - ip: 172.16.0.25
+      port: 6280
+      enable: true
+    - ip: 172.16.0.26
+      port: 6280
+      enable: true
+    - ip: 172.16.0.27
+      port: 6280 
+      enable: true
+  cleaner:
+    - ip: 172.16.0.26
+      port: 15000
+      enable: true
+    - ip: 172.16.0.27
+      port: 15000
+      enable: true
+  security-event:
+    - ip: 172.16.0.26
+      port: 15007
+      enable: true
+    - ip: 172.16.0.29
+      port: 15007
+      enable: true
+  threat:
+    - ip: 172.16.0.28
+      port: 15004
+      enable: true
+  threat-index:
+    - ip: 172.16.0.28
+      port: 15012
+      enable: true
+  transfer:
+    - ip: 172.16.0.29
+      port: 15001
+      enable: true
+  init:
+    - ip: 172.16.0.40
+      port: 8181
+      enable: true
+  web-service:
+    - ip: 172.16.0.40
+      port: 9990
+      enable: true
+  analyzer-dev:
+    - ip: 172.16.0.40
+      port: 15003
+      enable: true

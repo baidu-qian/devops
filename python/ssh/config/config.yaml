@@ -1,0 +1,39 @@
+database:
+  kafka:
+    # enable: true
+    brokers: 172.16.44.184:9092
+    lag: 10000
+  ssh:
+    username: xxxx
+    password: xxxx
+    port: 22
+  limit:
+    cpu: 20
+    memory: 4
+    disk: 10
+  replicas:
+    cleaner:
+      - ip: 172.16.44.99
+        min: 1
+        max: 2
+        enable: true
+    security-event:
+      - ip: 172.16.44.99
+        min: 1
+        max: 2
+        enable: true
+    threat: 
+      - ip: 172.16.44.99
+        min: 1
+        max: 2
+        enable: true
+    transfer:
+      - ip: 172.16.44.99
+        min: 1
+        max: 2
+        enable: true
+    analyzer-dev:
+      - ip: 172.16.44.99
+        min: 1
+        max: 2
+        enable: true
