@@ -4,8 +4,8 @@ database:
     brokers: 172.16.44.184:9092
     lag: 10000
   ssh:
-    username: xxxx
-    password: xxxx
+    username: app
+    password: 123456
     port: 22
   limit:
     cpu: 20
