@@ -1,0 +1,83 @@
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: app-elk-kibana
+  name: app-elk-kibana
+  namespace: app
+spec:
+  type: NodePort
+  ports:
+    - port: 5601
+      targetPort: 5601
+      # nodePort: 31715
+  selector:
+    app: app-elk-kibana
+
+---
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: app-elk-kibana
+  name: app-elk-kibana
+  namespace: app
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: app-elk-kibana
+  template:
+    metadata:
+      labels:
+        app: app-elk-kibana
+    spec:
+      containers:
+        - name: app-elk-kibana
+          image: 10.17.148.19/app/elk/kibana:7.16.2
+          resources:
+            requests:
+              memory: "1024Mi"
+              cpu: "1024m"
+            limits:
+              memory: "2048Mi"
+              cpu: "2048m"
+          env:
+            - name: TZ
+              value: "Asia/Shanghai"
+          ports:
+          - containerPort: 5601
+            name: http
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh","-c",""]
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 10
+            failureThreshold: 3
+          volumeMounts:
+            - name: kibana-conf
+              mountPath:  /usr/share/kibana/config/kibana.yml
+              subPath: kibana.yml
+      volumes:
+      - name: kibana-conf
+        configMap:
+          items:
+          - key: kibana.yml
+            path: kibana.yml
+          name: app-ops

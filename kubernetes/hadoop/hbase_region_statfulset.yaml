@@ -1,0 +1,104 @@
+---
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: app-hbase-region-pdb
+  namespace: app
+spec:
+  selector:
+    matchLabels:
+      app: app-hbase-region
+  maxUnavailable: 1
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: app-hbase-region
+  namespace: app
+spec:
+  serviceName: app-hbase-region
+  replicas: 5
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: app-hbase-region
+  template:
+    metadata:
+      labels:
+        app: app-hbase-region
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: "app"
+                    operator: In
+                    values: 
+                    - app-kafka
+                    - app-zookeeper
+                    - elasticsearch-master
+                    - elasticsearch-data
+                    - app-hadoop-nn
+                    - app-hadoop-dn
+                    - app-hbase-master
+              topologyKey: "kubernetes.io/hostname"
+      volumes:
+        - name: hbase-site
+          configMap:
+            name: app-hadoop
+            items:
+              - key: hbase-site.xml
+                path: hbase-site.xml
+        - name: core-site
+          configMap:
+            name: app-hadoop
+            items:
+              - key: core-site.xml
+                path: core-site.xml
+        - name: hdfs-site
+          configMap:
+            name: app-hadoop
+            items:
+              - key: hdfs-site.xml
+                path: hdfs-site.xml
+      containers:
+        - name: hbase
+          image: 10.17.148.19/app/hbase-arm:1.7.2
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 16020
+              protocol: TCP
+            - containerPort: 16030
+              protocol: TCP
+          volumeMounts:
+            - name: hbase-site
+              mountPath: /opt/hbase/conf/hbase-site.xml
+              subPath: hbase-site.xml
+            - name: core-site
+              mountPath: /opt/hbase/conf/core-site.xml
+              subPath: core-site.xml
+            - name: hdfs-site
+              mountPath: /opt/hbase/conf/hdfs-site.xml
+              subPath: hdfs-site.xml
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: HBASE_SERVER_TYPE
+              value: regionserver

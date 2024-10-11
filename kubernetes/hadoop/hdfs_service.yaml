@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-hadoop-master
+  namespace: app
+spec:
+  selector:
+    app: app-hadoop-nn
+  #type: ClusterIP
+  #clusterIP: None
+  ports:
+    - name: rpc
+      port: 9000
+      targetPort: 9000
+    - name: http
+      port: 50070
+      targetPort: 50070
+    - name: tcp1
+      port: 50010
+      targetPort: 50010
+    - name: tcp2
+      port: 50020
+      targetPort: 50020
+    #  nodePort: 9870
+# namenode pod
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-hadoop-dn
+  namespace: app
+spec:
+  selector:
+    app: app-hadoop-dn
+  #type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: rpc
+      port: 9000
+      targetPort: 9000
+    - name: http
+      port: 50070
+      targetPort: 50070
+    - name: tcp1
+      port: 50010
+      targetPort: 50010
+    - name: tcp2
+      port: 50020
+      targetPort: 50020
+    #  nodePort: 9870
+# namenode pod
+#---
+## namenode svc
+#apiVersion: v1
+#kind: Service
+#metadata:
+#  name: app-hadoop-cli
+#  namespace: app
+#spec:
+#  selector:
+#    app: app-hadoop-nn
+#  type: NodePort
+#  #clusterIP: None
+#  ports:
+#    - name: http
+#      port: 50070
+#      targetPort: 50070
+#    #  nodePort: 9870

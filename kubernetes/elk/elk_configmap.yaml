@@ -1,0 +1,354 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-ops
+  namespace: app
+  labels:
+    app: app-ops
+data:
+  elasticsearch.yml: |-
+    cluster.name: "docker-cluster"
+    network.host: 0.0.0.0
+    xpack.license.self_generated.type: trial
+    xpack.security.enabled: true
+    xpack.monitoring.collection.enabled: true
+  logstash.yml: |-
+    #server.publicBaseUrl: "http:/0.0.0.0:5601"
+    http.host: "0.0.0.0"
+    xpack.monitoring.elasticsearch.hosts: [ "http://app-elk-es:9200" ]
+    xpack.monitoring.enabled: true
+    # xpack.monitoring.elasticsearch.username: elastic
+    # xpack.monitoring.elasticsearch.password: changeme
+    xpack.monitoring.elasticsearch.username: elastic
+    xpack.monitoring.elasticsearch.password: 123456
+  logstash.conf: |-
+    input {
+        kafka {
+            bootstrap_servers => "app-kafka-cs:9092"
+            topics => ["app_elk"]
+            group_id => "logstash_kafka"
+            codec => "json"
+        }
+        # beats {
+        #     port => "5044"
+        # }
+    }
+
+    filter {
+        if "nginx" in [tags] {
+            grok {
+                match => {
+                    "message" => "%{IPORHOST:remote_ip} - %{DATA:user_name} \[%{HTTPDATE:access_time}\] \"%{WORD:http_method} %{DATA:url} HTTP/%{NUMBER:http_version}\" %{NUMBER:response_code} %{NUMBER:body_sent_bytes} \"%{DATA:referrer}\" \"%{DATA:http_agent}\""
+                }
+                overwrite => [ "message" ]
+                remove_field => ["message"]
+            }
+            geoip {
+                source => "remote_ip"
+            }
+            json {
+              source => "message"
+              target => "jsoncontent"
+              remove_field => ["message"]
+            }
+        } else if "nginx" not in [tags] {
+            grok {
+                match => {
+                    "message" => "\[%{TIMESTAMP_ISO8601:timestamp}\]\[%{LOGLEVEL:log-level}\]\[%{DATA:class}\]\-%{GREEDYDATA:message}"
+                }
+                overwrite => [ "message" ]
+                remove_tag => ["_jsonparsefailure"]
+            }
+            json {
+              source => "message"
+              target => "jsoncontent"
+              #remove_field => ["message"]
+              #remove_field => ["@version","agent.ephemeral_id","agent_id","log.offset"]
+            }
+        }
+    }
+
+    output {
+      stdout { codec => rubydebug }
+      elasticsearch {
+        codec => "json"
+        hosts => ["app-elk-es:9200"]
+        user => "elastic"
+        password => "123456"
+        index => "app_elk-%{+YYYY.MM.dd}"
+        document_type => "data"
+        ecs_compatibility => disabled
+      }
+    }
+  
+  kibana.yml: |-
+    server.host: 0.0.0.0
+    elasticsearch.hosts: [ "http://app-elk-es:9200" ]
+    monitoring.ui.container.elasticsearch.enabled: true
+    # elasticsearch.username: elastic
+    # elasticsearch.password: changeme
+    elasticsearch.username: elastic
+    elasticsearch.password: 123456
+    i18n.locale: "zh-CN"
+
+  filebeat.yml: |-
+    filebeat.inputs:
+    - type: log
+      enabled: true
+      fields:
+        service: "receiver"
+      tags: ["receiver"]
+      paths:
+        - /tmp/receiver/log/logJava.txt
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "cleaner"
+      tags: ["cleaner"]
+      paths:
+        - /tmp/cleaner/log/logJava.txt
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "transfer"
+      tags: ["transfer"]
+      paths:
+        - /tmp/transfer/log/logJava.txt
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "threat"
+      tags: ["threat"]
+      paths:
+        - /tmp/threat/log/logJava.txt
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "webService"
+      tags: ["webService"]
+      paths:
+        - /tmp/webService/log/logJava.txt
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "alertClient"
+      tags: ["alertClient"]
+      paths:
+        - /tmp/alertClient/log/logJava.txt
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "alertServer"
+      tags: ["alertServer"]
+      paths:
+        - /tmp/alertServer/log/logJava.txt
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "analyzerDev"
+      tags: ["analyzerDev"]
+      paths:
+        - /tmp/analyzerDev/log/logJava.txt
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "analyzerRelation"
+      tags: ["analyzerRelation"]
+      paths:
+        - /tmp/analyzerRelation/log/logJava.txt
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "appSender"
+      tags: ["appSender"]
+      paths:
+        - /tmp/appSender/log/logJava.txt
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "dataAggregater"
+      tags: ["dataAggregater"]
+      paths:
+        - /tmp/dataAggregater/log/logJava.txt
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "hunter"
+      tags: ["hunter"]
+      paths:
+        - /tmp/hunter/log/logJava.txt
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "init"
+      tags: ["init"]
+      paths:
+        - /tmp/init/log/logJava.txt
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "securityCore"
+      tags: ["securityCore"]
+      paths:
+        - /tmp/securityCore/log/logJava.txt
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "securityData"
+      tags: ["securityData"]
+      paths:
+        - /tmp/securityData/log/logJava.txt
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "devMark"
+      tags: ["devMark"]
+      paths:
+        - /tmp/devMark/log/logJava.txt
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "threat-index"
+      tags: ["threat-index"]
+      paths:
+        - /tmp/threat-index/log/logJava.txt
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "elasticsearchClient"
+      tags: ["elasticsearchClient"]
+      paths:
+        - /tmp/ElasticsearchClient/log/app_es.log
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "elasticsearchMaster"
+      tags: ["elasticsearchMaster"]
+      paths:
+        - /tmp/ElasticsearchMaster/log/app_es.log
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "hbase"
+      tags: ["hbase"]
+      paths:
+        - /tmp/hbase/logs/hbase-app-*.log
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "kafka"
+      tags: ["kafka"]
+      paths:
+        - /tmp/kafka/logs/*.log
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "nginx"
+      tags: ["nginx"]
+      paths:
+        - /tmp/nginx/logs/error.log
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    - type: log
+      enabled: true
+      fields:
+        service: "zookeeper"
+      tags: ["zookeeper"]
+      paths:
+        - /tmp/zookeeper/data/zookeeper.out
+      multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+      multiline.negate: false
+      multiline.match: after
+
+    output.kafka:
+      enabled: true
+      hosts: "app-kafka-cs:9092"
+      topic: app_elk
+    #output.logstash:
+    #  hosts: ["172.16.36.144:14100"]

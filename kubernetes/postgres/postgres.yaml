@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: app
+  labels:
+    app: postgres
+spec:
+  # type: NodePort
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+  selector:
+   app: postgres
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: app
+spec:
+  serviceName: postgres
+  selector:
+    matchLabels:
+      app: postgres
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: 10.17.148.19/app/postgres:13.8
+          imagePullPolicy: "IfNotPresent"
+          #command:
+          #        #  - postgres
+          #        #args:
+          #  - -c 
+          #  - max_connections=1024
+          #  - -c 
+          #  - shared_buffers=1024MB
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: postgres-config
+          volumeMounts:
+            - mountPath: /var/lib/postgresql
+              name: postgredb
+  volumeClaimTemplates:
+    - metadata:
+        name: postgredb
+      spec:
+        accessModes:
+        - "ReadWriteOnce"
+        storageClassName: ceph-rbd
+        resources:
+          requests:
+            storage: 20Gi

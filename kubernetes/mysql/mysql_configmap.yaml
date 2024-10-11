@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql
+  namespace: app
+  labels:
+    app: mysql
+data:
+  master.cnf: |
+    # Master配置
+    [mysqld]
+    log-bin=mysqllog
+    skip-name-resolve
+    max_connections=2048
+    character_set_server=utf8mb4
+    datadir=/var/lib/mysql/data 
+    #socket=/var/lib/mysql/data/mysql.sock
+    [client]
+
+  slave.cnf: |
+    # Slave配置
+    [mysqld]
+    super-read-only
+    skip-name-resolve
+    log-bin=mysql-bin
+    replicate-ignore-db=mysql
+    max_connections=2048
+    datadir=/var/lib/mysql/data 
+    #socket=/var/lib/mysql/data/mysql.sock
+    character_set_server=utf8mb4
+    [client]

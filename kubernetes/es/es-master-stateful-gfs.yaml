@@ -1,0 +1,207 @@
+---
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: app-es-master-pdb
+  namespace: app
+spec:
+  selector:
+    matchLabels:
+      app: elasticsearch-master
+  maxUnavailable: 1
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: app-es-master
+  namespace: app
+  labels:
+    component: elasticsearch
+    role: master
+    app: elasticsearch-master
+  annotations:
+    name: zookeeper
+    company: app
+    maintainer: hongchun.you@app.com
+spec:
+  serviceName: elasticsearch-master
+  selector:
+    matchLabels:
+      component: elasticsearch
+      role: master
+      app: elasticsearch-master
+  replicas: 5
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        component: elasticsearch
+        role: master
+        app: elasticsearch-master
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: role
+                  operator: In
+                  values:
+                  - master
+                - key: "app"
+                  operator: In
+                  values: 
+                  - app-kafka
+                  - elasticsearch-master
+                  - elasticsearch-data
+                  - app-hadoop-nn
+                  - app-hadoop-dn
+                  - app-hbase-master
+                  - app-hbase-region
+              topologyKey: kubernetes.io/hostname
+      initContainers:
+      - name: init-sysctl
+        image: 10.17.148.19/app/busybox:1.35.0
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        command: ["/bin/sh","-c"]
+        args: ["sysctl -w vm.max_map_count=262144; chown -R 1000:1000 /usr/share/elasticsearch/data"]
+        # command: ["sysctl","-w","vm.max_map_count=262144"]
+        # command:
+        # - sysctl
+        # - -w
+        # - vm.max_map_count=262144
+        volumeMounts:
+        - name: storage
+          mountPath: /usr/share/elasticsearch/data
+        securityContext:
+          privileged: true
+      containers:
+      - name: app-es-master
+        image: 10.17.148.19/app/elasticsearch-arm:6.8.23
+        # command: ["chown","-R","elasticsearch.","/usr/share/elasticsearch/data"]
+        # command:
+        #   - "tail"
+        # args:
+        #   - "-f"
+        #   - "/dev/null"
+        resources:
+          requests:
+            memory: "32Gi"
+            cpu: "1024m"
+          limits:
+            memory: "62Gi"
+            cpu: "100000m"
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: CLUSTER_NAME
+          value: app_es
+        - name: NUMBER_OF_MASTERS
+          value: "4"
+        - name: HTTP_CORS_ALLOW_ORIGIN
+          value: "*"
+        - name: HTTP_CORS_ENABLE
+          value: "false"
+        - name: NETWORK_HOST
+          value: "0.0.0.0"
+        - name: MAX_LOCAL_STORAGE_NODES
+          value: "1"
+        - name: NODE_MASTER
+          value: "true"
+        - name: NODE_INGEST
+          value: "false"
+        - name: NODE_DATA
+          value: "false"
+        - name: HTTP_ENABLE
+          value: "true"
+        - name: ES_JAVA_OPTS
+          value: -Xms30g -Xmx30g
+        - name: MEMORY_LOCK
+          value: "false"
+        - name: DISCOVERY_SERVICE
+          value: "elasticsearch-discovery"
+        - name: TZ
+          value: "Asia/Shanghai"
+        ports:
+        - containerPort: 9300
+          name: transport
+        - containerPort: 9200
+          name: http
+        lifecycle:
+          preStop:
+            exec:
+             command: ["/bin/ls","/tmp"]
+        readinessProbe:
+          tcpSocket:
+            port: transport
+          # exec:
+          #    command: ["/bin/ls","/tmp"]
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 10
+          failureThreshold: 3
+        livenessProbe:
+          tcpSocket:
+            port: transport
+          # exec:
+          #    command: ["/bin/ls","/tmp"]
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 10
+          failureThreshold: 3
+        volumeMounts:
+        - name: storage
+          mountPath: /usr/share/elasticsearch/data
+        - name: "es-log-config"
+          mountPath: "/usr/share/elasticsearch/config/log4j2.properties"
+          subPath: "log4j2.properties"
+        - name: "elasticsearch-config"
+          mountPath: "/usr/share/elasticsearch/config/elasticsearch.yml"
+          subPath: "elasticsearch.yml"
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          #fsGroup: 1000
+      volumes:
+      - name: "es-log-config"                  #引用configMap卷
+        configMap:    
+          name: "es-conf"
+          items:
+            - key: "log4j2.properties"             #创建configMap指定的名称
+              path: "log4j2.properties"
+      - name: "elasticsearch-config"                  #引用configMap卷
+        configMap:    
+          name: "es-conf"
+          items:
+            - key: "elasticsearch.yml"             #创建configMap指定的名称
+              path: "elasticsearch.yml"  
+  volumeClaimTemplates:
+  - metadata:
+      name: storage
+      namespace: app
+    spec:
+      storageClassName: ceph-rbd
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 100Gi

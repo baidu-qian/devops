@@ -1,0 +1,84 @@
+---
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: app-hbase-master-pdb
+  namespace: app
+spec:
+  selector:
+    matchLabels:
+      app: app-hbase-master
+  maxUnavailable: 1
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: app-hbase-master
+  namespace: app
+spec:
+  serviceName: app-hbase-master
+  replicas: 3
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: app-hbase-master
+  template:
+    metadata:
+      labels:
+        app: app-hbase-master
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      volumes:
+        - name: hbase-site
+          configMap:
+            name: app-hadoop
+            items:
+              - key: hbase-site.xml
+                path: hbase-site.xml
+        - name: core-site
+          configMap:
+            name: app-hadoop
+            items:
+              - key: core-site.xml
+                path: core-site.xml
+        - name: hdfs-site
+          configMap:
+            name: app-hadoop
+            items:
+              - key: hdfs-site.xml
+                path: hdfs-site.xml
+      containers:
+        - name: hbase
+          image: 10.17.148.19/app/hbase-arm:1.7.2
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 16000
+              protocol: TCP
+            - containerPort: 16010
+              protocol: TCP
+          volumeMounts:
+            - name: hbase-site
+              mountPath: /opt/hbase/conf/hbase-site.xml
+              subPath: hbase-site.xml
+            - name: core-site
+              mountPath: /opt/hbase/conf/core-site.xml
+              subPath: core-site.xml
+            - name: hdfs-site
+              mountPath: /opt/hbase/conf/hdfs-site.xml
+              subPath: hdfs-site.xml
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: HBASE_SERVER_TYPE
+              value: master

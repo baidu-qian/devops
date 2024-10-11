@@ -1,0 +1,31 @@
+version: '3.7'
+
+services:
+    kerberos:
+        container_name: kerberos
+        image: "kerberos:1.0.0"
+        restart: always
+        privileged: true
+        environment:
+            TZ: Asia/Shanghai
+        ports:
+            - 88:88/tcp
+            - 88:88/udp
+        volumes:
+            - /home/app/ops/kerberos/app:/app
+            - /home/app/ops/kerberos/config/krb5.conf:/etc/krb5.conf
+            - /home/app/ops/kerberos/config/kadm5.acl:/etc/krb5kdc/kadm5.acl 
+            - /home/app/ops/kerberos/config/krb5kdc:/var/lib/krb5kdc
+        #command:
+        #    /usr/local/bin/redis-server /usr/local/etc/redis/redis.conf
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "10m"
+                max-file: "3"
+        networks:
+            - app_network
+networks:
+  app_network:
+    external: true
+

@@ -1,0 +1,13 @@
+[local]
+127.0.0.1
+
+[my_disk]
+172.16.36.150
+172.16.36.185
+
+[all:vars]
+ansible_ssh_port = 22 
+ansible_ssh_user = app
+ansible_ssh_pass = '123456' 
+ansible_su_pass = '123456' 
+#host_key_checking = False 

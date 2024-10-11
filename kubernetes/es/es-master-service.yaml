@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: app
+  name: elasticsearch-master
+  labels:
+    component: elasticsearch
+    role: master
+    app: elasticsearch-master
+spec:
+  ports:
+  - port: 9300
+    name: transport
+  clusterIP: None
+  selector:
+    component: elasticsearch
+    role: master
+    app: elasticsearch-master

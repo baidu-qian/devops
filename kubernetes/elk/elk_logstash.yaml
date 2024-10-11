@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-elk-logstash
+  namespace: app
+  labels:
+    app: app-elk-logstash
+    company: app
+  annotations:
+    name: logstash
+    company: app
+    maintainer: hongchun.you@app.com
+spec:
+  selector:
+    matchLabels:
+      app: app-elk-logstash
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: app-elk-logstash
+    spec:
+      containers:
+      - name: app-logstash
+        image: 10.17.148.19/app/elk/logstash:7.16.2
+        # image: 172.16.36.145/app/logstash:8.1.3
+        imagePullPolicy: Always
+        # ports:
+        # - containerPort: 5044
+        #   name: liveness-port
+        #   hostPort: 5044
+        # livenessProbe:
+        #   failureThreshold: 3
+        #   initialDelaySeconds: 120
+        #   periodSeconds: 10
+        #   successThreshold: 1
+        #   tcpSocket:
+        #     port: 5044
+        #   timeoutSeconds: 10   
+        # readinessProbe:
+        #   failureThreshold: 3
+        #   initialDelaySeconds: 120
+        #   periodSeconds: 10
+        #   successThreshold: 1
+        #   tcpSocket:
+        #     port: 5044
+        #   timeoutSeconds: 10          
+        #command:
+        #  - /root/cleaner/bin/docker.sh
+        resources:
+          requests:
+            memory: 1500Mi
+            cpu: 256m
+          limits:
+            memory: 2Gi
+            cpu: 1000m
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/ls
+              - /tmp
+        env:
+        - name: TZ
+          value: Asia/Shanghai
+        - name: LS_JAVA_OPTS
+          value: "-Xmx1024m -Xms1024m"           
+        volumeMounts:
+          # - name: logs
+          #   mountPath: /usr/share/logstash/logs
+          - name: logstash-conf
+            mountPath: /usr/share/logstash/pipeline/logstash.conf
+            subPath: logstash.conf
+          - name: logstash-yml
+            mountPath: /usr/share/logstash/config/logstash.yml
+            subPath: logstash.yml
+          # - name: kafka-client-jaas
+          #   mountPath: /usr/share/logstash/config/kafka-client-jaas.conf
+          #   subPath: kafka-client-jaas.conf
+      volumes:
+      # - name: logs
+      #   emptyDir: {}
+      - name: logstash-conf
+        configMap:
+          items:
+          - key: logstash.conf
+            path: logstash.conf
+          name: app-ops
+      # - name: kafka-client-jaas
+      #   configMap:
+      #     items:
+      #     - key: kafka-client-jaas.conf
+      #       path: kafka-client-jaas.conf
+      #     name: app-ops
+      - name: logstash-yml
+        configMap:
+          items:
+          - key: logstash.yml
+            path: logstash.yml
+          name: app-ops

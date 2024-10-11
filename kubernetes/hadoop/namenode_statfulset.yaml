@@ -1,0 +1,109 @@
+---
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: app-hadoop-nn-pdb
+  namespace: app
+spec:
+  selector:
+    matchLabels:
+      app: app-hadoop-nn
+  maxUnavailable: 1
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: app-hadoop-nn
+  namespace: app
+spec:
+  serviceName: app-hadoop-nn
+  replicas: 1
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: app-hadoop-nn
+  template:
+    metadata:
+      labels:
+        app: app-hadoop-nn
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: "app"
+                    operator: In
+                    values: 
+                    - app-zookeeper
+                    - app-kafka
+                    - elasticsearch-master
+                    - elasticsearch-data
+                    - app-hadoop-dn
+                    - app-hadoop-nn
+                    - app-hbase-master
+                    - app-hbase-region
+              topologyKey: "kubernetes.io/hostname"
+      volumes:
+        - name: hadoop-env
+          configMap:
+            name: app-hadoop
+            items:
+              - key: hadoop-env.sh
+                path: hadoop-env.sh
+        - name: core-site
+          configMap:
+            name: app-hadoop
+            items:
+              - key: core-site.xml
+                path: core-site.xml
+        - name: hdfs-site
+          configMap:
+            name: app-hadoop
+            items:
+              - key: hdfs-site.xml
+                path: hdfs-site.xml
+      containers:
+        - name: hadoop
+          image: 10.17.148.19/app/hadoop-arm:2.10.2
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9000
+            - containerPort: 9870
+          volumeMounts:
+            - name: hadoop-env
+              mountPath: /opt/hadoop/etc/hadoop/hadoop-env.sh
+              subPath: hadoop-env.sh
+            - name: core-site
+              mountPath: /opt/hadoop/etc/hadoop/core-site.xml
+              subPath: core-site.xml
+            - name: hdfs-site
+              mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
+              subPath: hdfs-site.xml
+            - name: hadoop-data
+              mountPath: /opt/hadoop/hdfs/
+              subPath: hdfs
+            - name: hadoop-data
+              mountPath: /opt/hadoop/logs/
+              subPath: logs
+          env:
+            - name: HADOOP_NODE_TYPE
+              value: namenode
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+  volumeClaimTemplates:
+  - metadata:
+      name: hadoop-data
+    spec:
+      storageClassName: ceph-rbd
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 100Gi

@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: app
+  name: app-hbase-master
+spec:
+  clusterIP: None
+  selector:
+    app: app-hbase-master
+  ports:
+    - name: rpc
+      port: 16000
+    - name: http
+      port: 16010
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: app
+  name: app-hbase-region
+spec:
+  clusterIP: None
+  selector:
+    app: app-hbase-region
+  ports:
+    - name: rpc
+      port: 16020
+    - name: http
+      port: 16030

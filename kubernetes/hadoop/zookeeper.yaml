@@ -1,0 +1,180 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: app
+  name: app-zookeeper-hs
+  labels:
+    app: app-zookeeper
+  annotations:
+    name: zookeeper
+    company: app
+    maintainer: hongchun.you@app.com
+spec:
+  ports:
+  - port: 2888
+    name: server
+  - port: 3888
+    name: leader-election
+  clusterIP: None
+  selector:
+    app: app-zookeeper
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: app
+  name: app-zookeeper-cs
+  labels:
+    app: app-zookeeper
+  annotations:
+    name: zookeeper
+    company: app
+    maintainer: hongchun.you@app.com
+spec:
+  ports:
+  - port: 2181
+    name: client
+  selector:
+    app: app-zookeeper
+---
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  namespace: app
+  name: app-zookeeper-pdb
+  labels:
+    app: app-zookeeper
+  annotations:
+    name: zookeeper
+    company: app
+    maintainer: hongchun.you@app.com
+spec:
+  selector:
+    matchLabels:
+      app: app-zookeeper
+  maxUnavailable: 1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: app-zookeeper
+  namespace: app
+  labels:
+    app: app-zookeeper
+spec:
+  serviceName: app-zookeeper-hs
+  selector:
+    matchLabels:
+      app: app-zookeeper
+  replicas: 5
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: app-zookeeper
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: "app"
+                    operator: In
+                    values: 
+                    - app-zookeeper
+                    - elasticsearch-master
+                    - elasticsearch-data
+                    - app-hadoop-nn
+                    - app-hadoop-dn
+                    - app-hbase-master
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: kubernetes-zookeeper
+        imagePullPolicy: Always
+        image: "10.17.148.19/app/zookeeper-arm:3.7.1"
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2048Mi"
+            cpu: "1024m"
+        ports:
+        - containerPort: 2181
+          name: client
+        - containerPort: 2888
+          name: server
+        - containerPort: 3888
+          name: leader-election
+        command:
+        #   - "tail"
+        # args:
+        #   - "-f"
+        #   - "/dev/null"
+        - sh
+        - -c
+        - "start-zookeeper \
+          --servers=5 \
+          --data_dir=/opt/zookeeper/data \
+          --data_log_dir=/opt/zookeeper/data/log \
+          --conf_dir=/opt/zookeeper/conf \
+          --client_port=2181 \
+          --election_port=3888 \
+          --server_port=2888 \
+          --tick_time=2000 \
+          --init_limit=10 \
+          --sync_limit=5 \
+          --heap=3G \
+          --max_client_cnxns=1024 \
+          --snap_retain_count=5 \
+          --purge_interval=12 \
+          --max_session_timeout=40000 \
+          --min_session_timeout=4000 \
+          --log_level=INFO"
+        readinessProbe:
+          tcpSocket:
+            port: client
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          #exec:
+          #  command:
+          #  - sh
+          #  - -c
+          #  - "zookeeper-ready 2181"
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+        livenessProbe:
+          tcpSocket:
+            port: client
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          #exec:
+          #  command:
+          #  - sh
+          #  - -c
+          #  - "zookeeper-ready 2181"
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+        volumeMounts:
+        - name: datadir
+          mountPath: /opt/zookeeper/data
+      # securityContext:
+      #   runAsUser: 1000
+      #   fsGroup: 1000
+  volumeClaimTemplates:
+  - metadata:
+      name: datadir
+    spec:
+      storageClassName: ceph-rbd
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 50Gi

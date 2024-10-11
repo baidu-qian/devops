@@ -1,0 +1,72 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: kibana
+  name: app-kibana
+  namespace: app
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+    spec:
+      containers:
+        - name: app-kibana
+          image: 10.17.148.19/app/kibana-arm:6.8.23
+          resources:
+            requests:
+              memory: "1024Mi"
+              cpu: "1024m"
+            limits:
+              memory: "2048Mi"
+              cpu: "2048m"
+          env:
+            - name: "ELASTICSEARCH_URL"
+              value: "http://elasticsearch:9200"
+            - name: TZ
+              value: "Asia/Shanghai"
+          ports:
+          - containerPort: 5601
+            name: http
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh","-c",""]
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 10
+            failureThreshold: 3
+          volumeMounts:
+          - name: config
+            mountPath: /usr/share/kibana/config/kibana.yml
+            subPath: "kibana.yml"
+      imagePullSecrets:
+      - name: regcred-elastic
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+      volumes:
+        - name: "config"                  #引用configMap卷
+          configMap:    
+            name: "es-conf"
+            items:
+              - key: "kibana.yml"             #创建configMap指定的名称
+                path: "kibana.yml"

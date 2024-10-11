@@ -1,0 +1,150 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-es-client
+  namespace: app
+  labels:
+    component: elasticsearch
+    role: client
+    app: elasticsearch-client
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      component: elasticsearch
+      role: client
+      app: elasticsearch-client
+  template:
+    metadata:
+      namespace: app
+      labels:
+        component: elasticsearch
+        role: client
+        app: elasticsearch-client
+    spec:
+     #affinity:
+     #  podAntiAffinity:
+     #    preferredDuringSchedulingIgnoredDuringExecution:
+     #    - weight: 100
+     #      podAffinityTerm:
+     #        labelSelector:
+     #          matchExpressions:
+     #          - key: role
+     #            operator: In
+     #            values:
+     #            - client
+     #        topologyKey: kubernetes.io/hostname
+      initContainers:
+      - name: init-sysctl
+        image: 10.17.148.19/app/busybox:1.35.0
+        command: ["/bin/sh","-c"]
+        args: ["sysctl -w vm.max_map_count=262144; chown -R 1000:1000 /usr/share/elasticsearch/data"]
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: storage
+          mountPath: /usr/share/elasticsearch/data
+      containers:
+      - name: app-es-client
+        image: 10.17.148.19/app/elasticsearch-arm:6.8.23
+        resources:
+          requests:
+            memory: "30Gi"
+            cpu: "1024m"
+          limits:
+            memory: "62Gi"
+            cpu: "100000m"
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: CLUSTER_NAME
+          value: app_es
+        - name: NUMBER_OF_MASTERS
+          value: "3"
+        - name: HTTP_CORS_ALLOW_ORIGIN
+          value: "*"
+        - name: HTTP_CORS_ENABLE
+          value: "true"
+        - name: NETWORK_HOST
+          value: "0.0.0.0"
+        - name: MAX_LOCAL_STORAGE_NODES
+          value: "1"
+        - name: NODE_INGEST
+          value: "false"
+        - name: NODE_MASTER
+          value: "false"
+        - name: NODE_DATA
+          value: "false"
+        - name: HTTP_ENABLE
+          value: "true"
+        - name: ES_JAVA_OPTS
+          value: -Xms30g -Xmx30g
+        - name: MEMORY_LOCK
+          value: "false"
+        - name: DISCOVERY_SERVICE
+          value: "elasticsearch-discovery"
+        - name: TZ
+          value: "Asia/Shanghai"
+        ports:
+        - containerPort: 9200
+          name: http
+        - containerPort: 9300
+          name: transport
+        lifecycle:
+          preStop:
+            exec:
+             command: ["/bin/sh","-c",""]
+        livenessProbe:
+          tcpSocket:
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /_cluster/health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 10
+          failureThreshold: 3
+        volumeMounts:
+        - name: storage
+          mountPath: /usr/share/elasticsearch/data 
+        - name: "es-log-config"
+          mountPath: "/usr/share/elasticsearch/config/log4j2.properties"
+          subPath: "log4j2.properties"
+        - name: "elasticsearch-config"
+          mountPath: "/usr/share/elasticsearch/config/elasticsearch.yml"
+          subPath: "elasticsearch.yml"
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          #fsGroup: 1000
+      # nodeSelector:
+      #   app_name: testapp
+      volumes:
+      - name: "es-log-config"                  #引用configMap卷
+        configMap:    
+          name: "es-conf"
+          items:
+            - key: "log4j2.properties"             #创建configMap指定的名称
+              path: "log4j2.properties"
+      - name: "elasticsearch-config"                  #引用configMap卷
+        configMap:    
+          name: "es-conf"
+          items:
+            - key: "elasticsearch.yml"             #创建configMap指定的名称
+              path: "elasticsearch.yml"  
+      - name: storage
+        emptyDir:
+          medium: ""

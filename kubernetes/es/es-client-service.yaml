@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: app
+  name: elasticsearch
+  labels:
+    component: elasticsearch
+    role: client
+    app: elasticsearch-client
+spec:
+  selector:
+    component: elasticsearch
+    role: client
+    app: elasticsearch-client
+  ports:
+  - name: transport
+    port: 9300
+    protocol: TCP
+  - name: http
+    port: 9200
+    protocol: TCP
+  # type: NodePort
+#type: LoadBalancer

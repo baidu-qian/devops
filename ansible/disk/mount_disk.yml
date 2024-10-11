@@ -1,0 +1,47 @@
+- name: mount_disk
+  hosts: my_disk
+  become: yes
+  become_user: root
+  vars:
+    vg_name: "app_vg"
+    lv_name: "app_lv"
+    disk_name: "/dev/vdb"
+    dir_path: "/data"
+    disk_num: 1
+  tasks:
+    - name: 创建一个primary
+      parted: 
+        device: "{{ disk_name }}"
+        number: "{{ disk_num }}" #第一块分区
+        part_start: 0%
+        part_end: 100%
+        state: present
+    - name: 创建一个vg
+      lvg: 
+        vg: "{{ vg_name }}" 
+        pvs: "{{ disk_name }}{{ disk_num }}"
+        pesize: 4
+    - name: 创建一个lv 
+      lvol:
+        vg: "{{ vg_name }}"
+        lv: "{{ lv_name }}"
+        size: 100%PVS
+    - name: 格式化lv
+      filesystem: 
+        fstype: xfs 
+        dev: "/dev/{{ vg_name }}/{{ lv_name }}"
+    - name: 获取UUID
+      shell: blkid /dev/"{{ vg_name }}"/"{{ lv_name }}" |awk '{print $2}'
+      register: result
+      ignore_errors: True
+    - name: 创建挂载目录 
+      file: 
+        path: "{{ dir_path }}"
+        state: directory
+        mode: 0755
+    - name: 使用UUID挂载lvm分区 
+      mount: 
+         path: "{{ dir_path }}"
+         src:  "{{ result.stdout }}"
+         fstype: xfs
+         state: mounted
