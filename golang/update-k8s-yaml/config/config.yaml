@@ -1,0 +1,20 @@
+database:
+  kafka:
+    brokers: 192.168.1.10:9092
+  redis:
+    host: 192.168.1.10
+    port: 6379
+    password: admin123
+  mysql:
+    ip: 192.168.1.10
+    port: 5432
+    username: root 
+    password: root123
+  clickhouse:
+    ip: 192.168.1.10
+    port: 8123
+    username: default
+    password: 12345678
+  image:
+    path: hub.docker.com/test
+    
