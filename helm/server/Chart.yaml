@@ -1,0 +1,15 @@
+apiVersion: v2
+appVersion: "5.1.0"
+description: helm部署server部分
+keywords:
+  - zookeeper
+  - hadoop 
+  - hbase
+  - kafka 
+  - crash 
+  - postgres 
+  - minio 
+  - redis
+name: server
+version: 0.1.0
+type: application

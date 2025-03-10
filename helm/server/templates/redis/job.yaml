@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  namespace: {{ .Release.Namespace | quote }}
+  name: admin-redis-init
+spec:
+  template:
+    metadata:
+      labels:
+        app: admin-redis-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: init-redis
+        image:  "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "128m"
+          limits:
+            memory: "1024Mi"
+            cpu: "256m"
+        # command:
+        #   -  etcd
+        # #   - /root/receiver/bin/docker_run.sh
+        # # - tail
+        # # args:
+        # #   - -f
+        # #   - /dev/null
+        env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: TZ
+            value: "Asia/Shanghai"
+    #     volumeMounts:
+    #       - name: config
+    #         mountPath: /usr/local/api-sec/third.json
+    #         subPath: third.json
+    #   volumes: 
+    #     - name: config 
+    #       configMap: 
+    #         name: "admin-api-config-etcd"
+    #         items:
+    #           - key: third.json
+    #             path: third.json

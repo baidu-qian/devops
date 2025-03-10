@@ -1,0 +1,35 @@
+databases:
+  zstack:
+    cpum: 8C32G
+    image: template-Centos7.9-admin
+    l3: magician-44
+    vm_name: golang-vm
+    ip: 172.16.44.100
+    user: admin
+    password: password
+  
+  harbor:
+    ip: 172.16.44.141
+    tag: 1.8.0
+    username: admin
+    password: admin
+    dockerfile: dockerfile.general
+    ui_dockerfile: dockerfile.ui
+
+  ansible:
+    # hostfile: /data/magician/ansible_deployment/magician-deployment/hosts-magician-deploy-4.9
+    hostfile: /tmp/hosts-magician-deploy-4.9
+    magician_ui_tag: ver5.0.2_EVERSK_rel_230428.1
+    magician_tag: ver5.0.2_EVERSK_rel_230512.1
+    # local_directory: /data/magician/ansible_deployment/magician-deployment
+    local_directory: /Users/aaron/magician/dev/python
+    #remote_host: "remote_host_ip"
+    remote_username: root
+    remote_password: admin
+    #private_key_path: /home/magician/magician/keys/id_rsa
+    private_key_path: /Users/aaron/.ssh/id_rsa
+    remote_directory: /root/magician-deployment
+
+  magician:
+    server: app-sender,analyzer-dev,cleaner,init,receiver,security-event,threat,threat-index,transfer,web-service
+    server_ui: web-service-nginx

@@ -1,0 +1,1025 @@
+# nginx
+nginx: 
+  replicaCount: 1
+  image:
+    repository: 172.16.44.141/admin/nginx
+    pullPolicy: IfNotPresent
+    tag: "1.25.4"
+
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: "admin-nginx"
+  receiverServerName: "admin-receiver"
+
+  serviceAccountName: ""
+  serviceAccount:
+    create: true
+    automount: true
+    annotations: {}
+    name: ""
+  podAnnotations: {}
+  podLabels: {}
+
+  podSecurityContext: {}
+    # fsGroup: 2000
+
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+  service:
+    type: ClusterIP
+    port: 6279
+
+  ingress:
+    enabled: true
+    className: "ningx"
+    annotations:
+      kubernetes.io/ingress.class: "admin-ingress"
+      # nginx.ingress.kubernetes.io/rewrite-target: /
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+      nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+      # nginx.ingress.kubernetes.io/upstream-hash-by: $binary_remote_addr
+      nginx.ingress.kubernetes.io/upstream-hash-by: $http_x_forwarded_for
+      nginx.ingress.kubernetes.io/server-snippet: |
+        rewrite ^/2/1$ /admin/api/v4/receiver/download last;
+        rewrite ^/2/2$ /admin/api/v4/receiver/keepalive last;
+        rewrite ^/2/3$ /admin/api/v4/receiver/upload last;
+        rewrite ^/2/4$ /admin/api/v4/receiver/information last;
+        rewrite ^/2/5$ /admin/api/v4/receiver/client_upgrade last;
+        rewrite ^/3/1$ /admin/api/v4/devmark/information last;
+        rewrite ^/3/2$ /admin/api/v4/devmark/imeiTokenValidate last;
+        rewrite ^/3/3$ /admin/api/v4/devmark/fieldBind last;
+        proxy_set_header X-Forwarded-For  $proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP  $proxy_add_x_forwarded_for;
+      nginx.ingress.kubernetes.io/configuration-snippet: |
+        rewrite ^/2/1$ /admin/api/v4/receiver/download last;
+        rewrite ^/2/2$ /admin/api/v4/receiver/keepalive last;
+        rewrite ^/2/3$ /admin/api/v4/receiver/upload last;
+        rewrite ^/2/4$ /admin/api/v4/receiver/information last;
+        rewrite ^/2/5$ /admin/api/v4/receiver/client_upgrade last;
+        rewrite ^/3/1$ /admin/api/v4/devmark/information last;
+        rewrite ^/3/2$ /admin/api/v4/devmark/imeiTokenValidate last;
+        rewrite ^/3/3$ /admin/api/v4/devmark/fieldBind last;
+        proxy_set_header X-Forwarded-For  $proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP  $proxy_add_x_forwarded_for;
+    hosts:
+      - http: 
+          paths:
+            - path: /admin/api/v4/receiver
+              pathType: Prefix
+              backend:
+                service:
+                  name: admin-devmark
+                  port: 
+                    name: tcp
+            - path: /plugin
+              pathType: Prefix
+              backend:
+                service:
+                  name: admin-nginx
+                # servicePort: 6279
+                  port: 
+                    name: http
+    tls: []
+    #  - secretName: chart-example-tls
+    #    hosts:
+    #      - chart-example.local
+
+  # resources: {}
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "250m"
+    limits:
+      memory: "1024Mi"
+      cpu: "1000m"
+  livenessProbe:
+    httpGet:
+      path: /plugin/00/loader/configure.json
+      port: http
+  readinessProbe:
+    httpGet:
+      path: /plugin/00/loader/configure.json
+      port: http
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  volumes: 
+  - name: "admin-nginx-conf"                  #引用configMap卷
+    configMap:    
+      name: "admin-nginx-conf"
+      items:
+        - key: "down.conf"             #创建configMap指定的名称
+          path: "down.conf"     
+
+  volumeMounts: 
+    - name: "admin-nginx-conf"
+      mountPath: "/etc/nginx/conf.d/down.conf"
+      subPath: "down.conf"
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+# crash
+crash:
+  replicaCount: 1
+  image:
+    repository: 172.16.44.141/admin/crash
+    pullPolicy: IfNotPresent
+    tag: "v3.1"
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: "admin-crash"
+  serviceAccountName: ""
+  serviceAccount:
+    create: true
+    automount: true
+    annotations: {}
+    name: ""
+  podAnnotations: {} 
+  podLabels: {}
+  podSecurityContext: {}
+    # fsGroup: 2000
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+  service:
+    type: ClusterIP
+    port: 5000
+
+  env: 
+  # resources: {}
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1024"
+      cpu: "1000m"
+
+  livenessProbe:
+    failureThreshold: 3
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    successThreshold: 1
+    tcpSocket:
+      port: tcp
+    timeoutSeconds: 10   
+  readinessProbe:
+    failureThreshold: 3
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    successThreshold: 1
+    tcpSocket:
+      port: tcp
+    timeoutSeconds: 10        
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  volumes: 
+
+  volumeMounts: 
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+##zookeeper
+zookeeper: 
+  imagePullSecrets: []
+  fullnameOverride: "admin-zookeeper"
+  clusterDomain: cluster.local
+  diagnosticMode:
+    enabled: false
+    command:
+      - sleep
+    args:
+      - infinity
+  image:
+    registry: docker.io
+    repository: bitnami/zookeeper
+    tag: 3.9.3-debian-12-r0
+    digest: ""
+    pullPolicy: IfNotPresent
+    pullSecrets: []
+    debug: false
+  auth:
+    client:
+      enabled: false
+      clientUser: ""
+      clientPassword: ""
+      serverUsers: ""
+      serverPasswords: ""
+      existingSecret: ""
+    quorum:
+      enabled: false
+      learnerUser: ""
+      learnerPassword: ""
+      serverUsers: ""
+      serverPasswords: ""
+      existingSecret: ""
+  tickTime: 2000
+  initLimit: 10
+  syncLimit: 5
+  preAllocSize: 65536
+  snapCount: 100000
+  maxClientCnxns: 60
+  maxSessionTimeout: 40000
+  heapSize: 1024
+  fourlwCommandsWhitelist: srvr, mntr, ruok
+  minServerId: 1
+  listenOnAllIPs: false
+  autopurge:
+    snapRetainCount: 10
+    purgeInterval: 1
+  logLevel: ERROR
+  jvmFlags: ""
+  dataLogDir: ""
+  command:
+    - /scripts/setup.sh
+  args: []
+  replicaCount: 3
+  revisionHistoryLimit: 10
+  containerPorts:
+    client: 2181
+    tls: 3181
+    follower: 2888
+    election: 3888
+    adminServer: 8080
+    metrics: 9141
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+    probeCommandTimeout: 3
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+    probeCommandTimeout: 2
+  startupProbe:
+    enabled: false
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 15
+    successThreshold: 1
+  customLivenessProbe: {}
+  customReadinessProbe: {}
+  customStartupProbe: {}
+  lifecycleHooks: {}
+  resourcesPreset: "micro"
+  resources:
+    limits:
+      cpu: 375m
+      ephemeral-storage: 2Gi
+      memory: 384Mi
+    requests:
+      cpu: 250m
+      ephemeral-storage: 50Mi
+      memory: 256Mi
+  podSecurityContext:
+    enabled: true
+    fsGroupChangePolicy: Always
+    sysctls: []
+    supplementalGroups: []
+    fsGroup: 1001
+  containerSecurityContext:
+    enabled: true
+    seLinuxOptions: {}
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    privileged: false
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    seccompProfile:
+      type: "RuntimeDefault"
+  automountServiceAccountToken: false
+  hostAliases: []
+  podLabels: {}
+  podAnnotations: {}
+  podAffinityPreset: ""
+  podAntiAffinityPreset: soft
+  nodeAffinityPreset:
+    type: ""
+    key: ""
+    values: []
+  affinity: {}
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
+  podManagementPolicy: Parallel
+  priorityClassName: ""
+  schedulerName: ""
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate: {}
+  service:
+    type: ClusterIP
+    ports:
+      client: 2181
+      tls: 3181
+      follower: 2888
+      election: 3888
+    nodePorts:
+      client: ""
+      tls: ""
+    disableBaseClientPort: false
+    sessionAffinity: None
+    sessionAffinityConfig: {}
+    clusterIP: ""
+    loadBalancerIP: ""
+    loadBalancerSourceRanges: []
+    externalTrafficPolicy: Cluster
+    annotations: {}
+    extraPorts: []
+    headless:
+      publishNotReadyAddresses: true
+      annotations: {}
+      servicenameOverride: ""
+  persistence:
+    enabled: true
+    existingClaim: ""
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 8Gi
+    annotations: {}
+    labels: {}
+    selector: {}
+    dataLogDir:
+      size: 8Gi
+      existingClaim: ""
+      selector: {}
+
+## redis
+redis: 
+  replicaCount: 6
+  password: "admin"
+  image:
+    repository: docker.io/bitnami/redis-cluster
+    pullPolicy: IfNotPresent
+    tag: "7.4.1-debian-12-r0"
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+  imagePullSecrets: []
+  podManagementPolicy: Parallel
+  nameOverride: ""
+  fullnameOverride: "admin-redis"
+  serviceAccountName: ""
+  serviceAccount:
+    create: true
+    automount: true
+    annotations: {}
+    name: ""
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: 
+    fsGroup: 1001
+    fsGroupChangePolicy: Always
+    supplementalGroups: []
+    sysctls: []
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    privileged: false
+    readOnlyRootFilesystem: true
+    runAsGroup: 1001
+    runAsNonRoot: true
+    runAsUser: 1001
+    seLinuxOptions: null
+    seccompProfile:
+      type: RuntimeDefault
+  service:
+    type: ClusterIP
+    ports: 
+      client: 6379
+      cluster: 16379
+  env: 
+    REDIS_AOF_ENABLED: "yes"
+    REDIS_TLS_ENABLED: "no"
+    REDIS_PORT_NUMBER:  "6379"
+  # resources: {}
+  resources:
+    limits:
+      cpu: 150m
+      ephemeral-storage: 2Gi
+      memory: 192Mi
+    requests:
+      cpu: 100m
+      ephemeral-storage: 50Mi
+      memory: 128Mi
+  livenessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    # One second longer than command timeout should prevent generation of zombie processes.
+    timeoutSeconds: 6
+    successThreshold: 1
+    failureThreshold: 5
+    exec:
+      command:
+        - sh
+        - -c
+        - /scripts/ping_liveness_local.sh 5
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    # One second longer than command timeout should prevent generation of zombie processes.
+    timeoutSeconds: 2
+    successThreshold: 1
+    failureThreshold: 5
+    exec:
+      command:
+        - sh
+        - -c
+        - /scripts/ping_readiness_local.sh 1   
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+  volumes:
+    - name: scripts
+      configMap:
+        name: admin-redis-scripts
+        defaultMode: 0755
+    - name: default-config
+      configMap:
+        name: admin-redis-conf
+    - name: empty-dir
+      emptyDir: {}
+  volumeMounts: 
+    - name: scripts
+      mountPath: /scripts
+    - name: data
+      mountPath: /bitnami/redis/data
+      subPath: 
+    - name: default-config
+      mountPath: /opt/bitnami/redis/etc/redis-default.conf
+      subPath: redis-default.conf
+    - name: empty-dir
+      mountPath: /opt/bitnami/redis/etc/
+      subPath: app-conf-dir
+    - name: empty-dir
+      mountPath: /opt/bitnami/redis/tmp
+      subPath: app-tmp-dir
+    - name: empty-dir
+      mountPath: /opt/bitnami/redis/logs
+      subPath: app-logs-dir
+    - name: empty-dir
+      mountPath: /tmp
+      subPath: tmp-dir
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        storageClassName: nfs-client
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 8Gi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+
+## kafka
+kafka: 
+  clusterDomain: cluster.local
+  replicaCount: 6
+  controller:
+    minId: 0
+  password: "admin"
+  image:
+    repository: docker.io/bitnami/kafka
+    pullPolicy: IfNotPresent
+    tag: "3.8.1-debian-12-r0"
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+  imagePullSecrets: []
+  podManagementPolicy: Parallel
+  nameOverride: ""
+  fullnameOverride: "admin-kafka"
+  serviceAccountName: ""
+  serviceAccount:
+    create: true
+    automount: true
+    annotations: {}
+    name: ""
+  podAnnotations: {}
+  podLabels: {}
+  podSecurityContext: 
+    fsGroup: 1001
+    fsGroupChangePolicy: Always
+    seccompProfile:
+      type: RuntimeDefault
+    supplementalGroups: []
+    sysctls: []
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: true
+    runAsGroup: 1001
+    runAsNonRoot: true
+    runAsUser: 1001
+    seLinuxOptions: {}
+  service:
+    ports: 
+      controller: 9093
+      client: 9092
+      interbroker: 9094
+  env: 
+    BITNAMI_DEBUG: "false"
+    KAFKA_VOLUME_DIR: "/bitnami/kafka"
+    KAFKA_MIN_ID:  "0"
+    KAFKA_HEAP_OPTS: "-Xmx1024m -Xms1024m"
+  # resources: {}
+  resources:
+    limits:
+      cpu: 750m
+      ephemeral-storage: 2Gi
+      memory: 768Mi
+    requests:
+      cpu: 500m
+      ephemeral-storage: 50Mi
+      memory: 512Mi
+  livenessProbe:
+    failureThreshold: 3
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 5
+    exec:
+      command:
+        - pgrep
+        - -f
+        - kafka
+  readinessProbe:
+    failureThreshold: 6
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 5
+    tcpSocket:
+      port: "controller" 
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+  volumes:
+    - name: kafka-configmaps
+      configMap:
+        name: admin-kafka-conf
+    - name: kafka-secret-config
+      emptyDir: {}
+    - name: kafka-config
+      emptyDir: {}
+    - name: tmp
+      emptyDir: {}
+    - name: scripts
+      configMap:
+        name: admin-kafka-scripts-conf
+        defaultMode: 493
+    - name: logs
+      emptyDir: {}
+  volumeMounts: 
+    init: 
+      - name: data
+        mountPath: /bitnami/kafka
+      - name: kafka-config
+        mountPath: /config
+      - name: kafka-configmaps
+        mountPath: /configmaps
+      - name: kafka-secret-config
+        mountPath: /secret-config
+      - name: scripts
+        mountPath: /scripts
+      - name: tmp
+        mountPath: /tmp
+    containers: 
+      - name: data
+        mountPath: /bitnami/kafka
+      - name: logs
+        mountPath: /opt/bitnami/kafka/logs
+      - name: kafka-config
+        mountPath: /opt/bitnami/kafka/config/server.properties
+        subPath: server.properties
+      - name: tmp
+        mountPath: /tmp
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        storageClassName: nfs-client
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 8Gi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  listeners:
+    ## @param listeners.client.name Name for the Kafka client listener
+    ## @param listeners.client.containerPort Port for the Kafka client listener
+    ## @param listeners.client.protocol Security protocol for the Kafka client listener. Allowed values are 'PLAINTEXT', 'SASL_PLAINTEXT', 'SASL_SSL' and 'SSL'
+    ## @param listeners.client.sslClientAuth Optional. If SASL_SSL is enabled, configure mTLS TLS authentication type. If SSL protocol is enabled, overrides tls.authType for this listener. Allowed values are 'none', 'requested' and 'required'
+    client:
+      containerPort: 9092
+      protocol: PLAINTEXT
+      name: CLIENT
+      sslClientAuth: ""
+    ## @param listeners.controller.name Name for the Kafka controller listener
+    ## @param listeners.controller.containerPort Port for the Kafka controller listener
+    ## @param listeners.controller.protocol Security protocol for the Kafka controller listener. Allowed values are 'PLAINTEXT', 'SASL_PLAINTEXT', 'SASL_SSL' and 'SSL'
+    ## @param listeners.controller.sslClientAuth Optional. If SASL_SSL is enabled, configure mTLS TLS authentication type. If SSL protocol is enabled, overrides tls.authType for this listener. Allowed values are 'none', 'requested' and 'required'
+    ## Ref: https://cwiki.apache.org/confluence/display/KAFKA/KIP-684+-+Support+mutual+TLS+authentication+on+SASL_SSL+listeners
+    controller:
+      name: CONTROLLER
+      containerPort: 9093
+      protocol: PLAINTEXT
+      sslClientAuth: ""
+    ## @param listeners.interbroker.name Name for the Kafka inter-broker listener
+    ## @param listeners.interbroker.containerPort Port for the Kafka inter-broker listener
+    ## @param listeners.interbroker.protocol Security protocol for the Kafka inter-broker listener. Allowed values are 'PLAINTEXT', 'SASL_PLAINTEXT', 'SASL_SSL' and 'SSL'
+    ## @param listeners.interbroker.sslClientAuth Optional. If SASL_SSL is enabled, configure mTLS TLS authentication type. If SSL protocol is enabled, overrides tls.authType for this listener. Allowed values are 'none', 'requested' and 'required'
+    interbroker:
+      containerPort: 9094
+      protocol: PLAINTEXT
+      name: INTERNAL
+      sslClientAuth: ""
+    ## @param listeners.external.containerPort Port for the Kafka external listener
+    ## @param listeners.external.protocol Security protocol for the Kafka external listener. . Allowed values are 'PLAINTEXT', 'SASL_PLAINTEXT', 'SASL_SSL' and 'SSL'
+    ## @param listeners.external.name Name for the Kafka external listener
+    ## @param listeners.external.sslClientAuth Optional. If SASL_SSL is enabled, configure mTLS TLS authentication type. If SSL protocol is enabled, overrides tls.sslClientAuth for this listener. Allowed values are 'none', 'requested' and 'required'
+    external:
+      containerPort: 9095
+      protocol: PLAINTEXT
+      name: EXTERNAL
+      sslClientAuth: ""
+    ## @param listeners.extraListeners Array of listener objects to be appended to already existing listeners
+    ## E.g.
+    ## extraListeners:
+    ##  - name: CUSTOM
+    ##    containerPort: 9097
+    ##    protocol: SASL_PLAINTEXT
+    ##    sslClientAuth: ""
+    ##
+    extraListeners: []
+    ## NOTE: If set, below values will override configuration set using the above values (extraListeners.*, controller.*, interbroker.*, client.* and external.*)
+    ## @param listeners.overrideListeners Overrides the Kafka 'listeners' configuration setting.
+    ## @param listeners.advertisedListeners Overrides the Kafka 'advertised.listener' configuration setting.
+    ## @param listeners.securityProtocolMap Overrides the Kafka 'security.protocol.map' configuration setting.
+    overrideListeners: ""
+    advertisedListeners: ""
+    securityProtocolMap: ""
+  kraft:
+    ## @param kraft.enabled Switch to enable or disable the KRaft mode for Kafka
+    ##
+    enabled: true
+    ## @param kraft.existingClusterIdSecret Name of the secret containing the cluster ID for the Kafka KRaft cluster. This is incompatible with the clusterId parameter. If both are set, the existingClusterIdSecret will be used
+    existingClusterIdSecret: ""
+    ## @param kraft.clusterId Kafka Kraft cluster ID. If not set, a random cluster ID will be generated the first time Kraft is initialized.
+    ## NOTE: Already initialized Kafka nodes will use cluster ID stored in their persisted storage.
+    ## If reusing existing PVCs or migrating from Zookeeper mode, make sure the cluster ID is set matching the stored cluster ID, otherwise new nodes will fail to join the cluster.
+    ## In case the cluster ID stored in the secret does not match the value stored in /bitnami/kafka/data/meta.properties, remove the secret and upgrade the chart setting the correct value.
+    ##
+    clusterId: ""
+    ## @param kraft.controllerQuorumVoters Override the Kafka controller quorum voters of the Kafka Kraft cluster. If not set, it will be automatically configured to use all controller-elegible nodes.
+    ##
+    controllerQuorumVoters: ""
+
+
+# minio
+minio:
+  replicaCount: 4
+  ## 单机值设置为: standalone  集群值设置为: distributed
+  mode: standalone
+  image:
+    repository: bitnami/minio
+    pullPolicy: IfNotPresent
+    tag: "2024.10.29-debian-12-r0"
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: "admin-minio"
+  clusterDomain: cluster.local
+  serviceAccountName: ""
+  serviceAccount:
+    create: true
+    automount: true
+    annotations: {}
+    name: ""
+  podAnnotations: {} 
+  podManagementPolicy: Parallel
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+  podLabels: {}
+  service:
+    type: ClusterIP
+    ports: 
+      minioApi: 9000
+      minioConsole: 9001
+
+  env: 
+    BITNAMI_DEBUG: "false"
+    MINIO_SCHEME: "http"
+    MINIO_FORCE_NEW_KEYS: "no"
+    MINIO_ROOT_USER: "admin"
+    MINIO_ROOT_PASSWORD: "password"
+    MINIO_BROWSER: "on"
+    MINIO_PROMETHEUS_AUTH_TYPE: "public"
+    MINIO_CONSOLE_PORT_NUMBER: "9001"
+    MINIO_DATA_DIR: "/bitnami/minio/data"
+
+    MINIO_DISTRIBUTED_MODE_ENABLED: "yes"
+    MINIO_SKIP_CLIENT: "yes"
+
+  # resources: {}
+  resources:
+    limits:
+      cpu: 375m
+      ephemeral-storage: 2Gi
+      memory: 384Mi
+    requests:
+      cpu: 250m
+      ephemeral-storage: 50Mi
+      memory: 256Mi
+  podSecurityContext:
+    fsGroup: 1001
+    fsGroupChangePolicy: Always
+    seccompProfile:
+      type: RuntimeDefault
+    supplementalGroups: []
+    sysctls: []
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: true
+    runAsGroup: 1001
+    runAsNonRoot: true
+    runAsUser: 1001
+    seLinuxOptions: {}
+
+  livenessProbe:
+    httpGet:
+      path: /minio/health/live
+      port: minio-api
+      scheme: "HTTP"
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 5
+  readinessProbe:
+    tcpSocket:
+      port: minio-api
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 5       
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  volumes: 
+    standalone:
+      - name: empty-dir
+        emptyDir: {}
+      - name: data
+        persistentVolumeClaim:
+          claimName: admin-minio
+    distributed: 
+      - name: empty-dir
+        emptyDir: {}
+  volumeMounts: 
+    - name: empty-dir
+      mountPath: /tmp
+      subPath: tmp-dir
+    - name: empty-dir
+      mountPath: /opt/bitnami/minio/tmp
+      subPath: app-tmp-dir
+    - name: empty-dir
+      mountPath: /.mc
+      subPath: app-mc-dir
+    - name: data
+      mountPath: /bitnami/minio/data
+      
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        storageClassName: nfs-client
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 8Gi
+  persistence:
+    storageClass: "nfs-client"
+    size: 8Gi
+    mountPath: /bitnami/minio/data
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+
+# postgres
+postgres:
+  replicaCount: 1
+  ## 单机值设置为: standalone  集群值设置为: distributed
+  mode: standalone
+  image:
+    repository: bitnami/postgresql
+    pullPolicy: IfNotPresent
+    tag: "17.2.0"
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: "admin-postgres"
+  clusterDomain: cluster.local
+  serviceAccountName: ""
+  serviceAccount:
+    create: true
+    automount: true
+    annotations: {}
+    name: ""
+  podAnnotations: {} 
+  podManagementPolicy: Parallel
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+  podLabels: {}
+  service:
+    type: ClusterIP
+    port: 5432
+
+  env: 
+    BITNAMI_DEBUG: "false"
+    POSTGRESQL_VOLUME_DIR: "/bitnami/postgresql"
+    PGDATA: "/bitnami/postgresql/data"
+    POSTGRES_PASSWORD: "admin"
+    POSTGRESQL_ENABLE_LDAP: "no"
+    POSTGRESQL_ENABLE_TLS: "no"
+    POSTGRESQL_LOG_HOSTNAME: "false"
+    POSTGRESQL_LOG_CONNECTIONS: "false"
+    POSTGRESQL_LOG_DISCONNECTIONS: "false"
+    POSTGRESQL_PGAUDIT_LOG_CATALOG: "off"
+    POSTGRESQL_CLIENT_MIN_MESSAGES: "error"
+    POSTGRESQL_SHARED_PRELOAD_LIBRARIES: "pgaudit"
+  # resources: {}
+  resources:
+    limits:
+      cpu: 150m
+      ephemeral-storage: 2Gi
+      memory: 192Mi
+    requests:
+      cpu: 100m
+      ephemeral-storage: 50Mi
+      memory: 128Mi
+  podSecurityContext:
+    fsGroup: 1001
+    fsGroupChangePolicy: Always
+    seccompProfile:
+      type: RuntimeDefault
+    supplementalGroups: []
+    sysctls: []
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: true
+    runAsGroup: 1001
+    runAsNonRoot: true
+    runAsUser: 1001
+    seLinuxOptions: {}
+
+  livenessProbe:
+    failureThreshold: 6
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 5
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - exec pg_isready -U "postgres" -h 127.0.0.1 -p 5432
+  readinessProbe:
+    failureThreshold: 6
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 5
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - -e
+        - |
+          exec pg_isready -U "postgres" -h 127.0.0.1 -p 5432
+          [ -f /opt/bitnami/postgresql/tmp/.initialized ] || [ -f /bitnami/postgresql/.initialized ]     
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  volumes: 
+    - name: empty-dir
+      emptyDir: {}
+    - name: dshm
+      emptyDir:
+        medium: Memory
+  volumeMounts: 
+    - name: empty-dir
+      mountPath: /tmp
+      subPath: tmp-dir
+    - name: empty-dir
+      mountPath: /opt/bitnami/postgresql/conf
+      subPath: app-conf-dir
+    - name: empty-dir
+      mountPath: /opt/bitnami/postgresql/tmp
+      subPath: app-tmp-dir
+    - name: dshm
+      mountPath: /dev/shm
+    - name: data
+      mountPath: /bitnami/postgresql
+      
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        storageClassName: nfs-client
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 8Gi
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}

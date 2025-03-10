@@ -1,0 +1,79 @@
+database:
+  local:
+    islocal: false
+  ssh:
+    username: admin
+    password: admin
+    port: 22
+  init: 
+    - ip: 192.168.31.171
+      enable: true
+  transfer_rsync_es_list:
+    - ip: 192.168.31.171
+      enable: true
+  redis:
+    enable: true
+    active_mode: single
+    single:
+      spring.redis.host: 192.168.31.171
+      spring.redis.port: 6379
+      spring.redis.password: admin
+    cluster:
+      spring.redis.cluster.nodes: admin-redis:6379
+      spring.redis.password: admin
+  backup_redis:
+    enable: true
+    active_mode: single
+    single:
+      spring.redis.host: 192.168.31.179
+      spring.redis.port: 6379
+      spring.redis.password: admin
+    cluster:
+      spring.redis.cluster.nodes: admin-redis:6379
+      spring.redis.password: admin
+  # redis同步服务
+  redis_sync:
+    enable: true
+    ip: 192.168.31.171
+  db:
+    enable: true
+    db_name: admin_everisk_v4
+    db_ip: 192.168.31.171:5432
+    db_type: postgres
+    db_user: admin_pg 
+    db_password: admin
+  elasticsearch:
+    enable: true
+    everisk.elasticsearch.cluster_name: admin_es
+    everisk.elasticsearch.host_names: admin-es
+    everisk.elasticsearch.restful_port: 9200
+    everisk.elasticsearch.port: 9300
+    everisk.elasticsearch.shard.number: 0
+    username: elastic
+    password: admin
+  kibana:
+    everisk.kibana.host_name: http://192.168.31.171
+    everisk.kibana.port: 5601
+  hbase: 
+    enable: true
+    list: 
+      - 192.168.31.171
+  remote_hbase:
+    enable: true
+    hbase.server: 192.168.31.179
+  remote_zookeeper:
+    enable: true
+    zookeeper.server: 192.168.31.179:2181
+  transfer_rsync_es:
+    enable: true
+    server.port: 15101
+    transfer.kafka.groupid-information: groupid_dataservice_rsync
+    everisk.elasticsearch.cluster_name: admin_es
+    everisk.elasticsearch.host_names: admin-es
+    everisk.elasticsearch.login: elastic:admin
+    everisk.elasticsearch.port: 9300
+    everisk.elasticsearch.restful_port: 9200
+    management.metrics.tags.application: rsync_transfer_es
+    transfer.kafka.groupid-backup-filtered-data: sync_groupid_backup_filtered_data
+    transfer.kafka.groupid-history-recalculate: sync_security_event_history_recalculate_group
+    hunter.kafka.groupid.decrypt: sync_groupid_hunter

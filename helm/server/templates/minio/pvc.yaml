@@ -1,0 +1,16 @@
+{{- if (eq .Values.minio.mode "standalone") }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ include "minio.fullname" . }}
+  namespace:  {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: {{ .Values.minio.persistence.size | quote }}
+  storageClassName: {{ .Values.minio.persistence.storageClass | quote }}
+{{- end }}

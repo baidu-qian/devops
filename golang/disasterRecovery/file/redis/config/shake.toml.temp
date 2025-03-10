@@ -1,0 +1,49 @@
+[advanced]
+  aws_psync = ""
+  dir = "data"
+  empty_db_before_sync = false
+  log_compress = true
+  log_file = "shake.log"
+  log_interval = 5
+  log_level = "info"
+  log_max_age = 7
+  log_max_backups = 3
+  log_max_size = 512
+  log_rotation = true
+  ncpu = 0
+  pipeline_count_limit = 1024
+  pprof_port = 0
+  rdb_restore_command_behavior = "panic"
+  status_port = 0
+  target_redis_client_max_querybuf_len = 1073741824
+  target_redis_proto_max_bulk_len = 512000000
+
+[filter]
+  allow_command = []
+  allow_command_group = []
+  allow_db = []
+  allow_key_prefix = []
+  allow_key_regex = []
+  allow_key_suffix = []
+  allow_keys = []
+  block_command = []
+  block_command_group = []
+  block_db = []
+  block_key_prefix = []
+  block_key_regex = []
+  block_key_suffix = []
+  block_keys = []
+  function = ""
+
+[module]
+  target_mbbloom_version = 20603
+
+[redis_writer]
+  address = "192.168.31.179:6379"
+  cluster = false
+  password = "beap123"
+
+[sync_reader]
+  address = "192.168.31.171:6379"
+  cluster = false
+  password = "beap123"

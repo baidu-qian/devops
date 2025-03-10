@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "admin-nginx-conf"
+  namespace: {{ .Release.Namespace | quote }}
+data:
+  down.conf: |-
+    #upstream  receiver_list {
+    #    server   admin-receiver:6280  max_fails=3 weight=1;
+    #    check interval=3000 rise=2 fall=5 timeout=1000 type=tcp;
+    #}
+
+    server {
+        listen       6279;
+        server_name  _;
+        client_max_body_size 3M;
+
+
+        ###########威胁感知url转换开始################
+        #调整configure
+        location ~ /1/(\d*)/1$ {
+            #alias /plugin/(\d*)/loader/configure;
+            rewrite ^/1/(\d*)/1$ /plugin/00/loader/configure last;
+        }
+
+        #调整JAVA
+        location ~ /1/(\d*)/2/(.+?)$ {
+            rewrite ^/1/(\d*)/2/(.+?)$ /plugin/$1/java/$2/RiskStub.dex last;
+        }
+
+        #调整C
+        location ~ /1/(\d*)/3/(\d*)/1$ {
+            rewrite ^/1/(\d*)/3/(\d*)/(\d*)$ /plugin/$1/so/$2/armeabi/RiskStub last;
+            #rewrite ^/1/(\d*)/3/(\d*)/(\d*)$ $foo last;
+        }
+
+        location ~ /1/(\d*)/3/(\d*)/2$ {
+            rewrite ^/1/(\d*)/3/(\d*)/(\d*)$ /plugin/$1/so/$2/armeabi-v7a/RiskStub last;
+            #rewrite ^/1/(\d*)/3/(\d*)/(\d*)$ $foo last;
+        }
+  
+        location ~ /1/(\d*)/3/(\d*)/3$ {
+            rewrite ^/1/(\d*)/3/(\d*)/(\d*)$ /plugin/$1/so/$2/arm64-v8a/RiskStub last;
+            #rewrite ^/1/(\d*)/3/(\d*)/(\d*)$ $foo last;
+        }
+
+        location ~ /1/(\d*)/3/(\d*)/4$ {
+            rewrite ^/1/(\d*)/3/(\d*)/(\d*)$ /plugin/$1/so/$2/x86/RiskStub last;
+            #rewrite ^/1/(\d*)/3/(\d*)/(\d*)$ $foo last;
+        }
+
+        location ~ /1/(\d*)/3/(\d*)/5$ {
+            rewrite ^/1/(\d*)/3/(\d*)/(\d*)$ /plugin/$1/so/$2/x86_64/RiskStub last;
+            #rewrite ^/1/(\d*)/3/(\d*)/(\d*)$ $foo last;
+        }
+
+        #调整down
+        location ~ /2/1$ {
+            rewrite ^/2/1$ /admin/api/v4/receiver/download last;
+        }
+
+        #调整keepalive
+        location ~ /2/2$ {
+            rewrite ^/2/2$ /admin/api/v4/receiver/keepalive last;
+        }
+
+        #调整upload
+        location ~ /2/3$ {
+            rewrite ^/2/3$ /admin/api/v4/receiver/upload last;
+        }
+
+
+    ###########威胁感知url转换结束################
+
+        location ~ /plugin/(\d*)/(.+?)$ {
+            set $root /etc/nginx/client;
+            set $config_dir $root/plugin/$1/$2;
+            if (!-e $config_dir) {
+                rewrite ^/plugin/(\d*)/(.+?)$ /plugin/00/$2 last;
+                break;
+            }
+            break;
+            root $root;
+        }
+
+        location /plugin/ {
+            root /etc/nginx/client;
+        }
+
+        # location / {
+        #     proxy_pass_header Server;
+        #     proxy_set_header Host $http_host;
+        #     proxy_redirect off;
+        #     #proxy_set_header X-Real-IP $remote_addr;
+        #     proxy_set_header X-Real-IP $http_x_forwarded_for;
+        #     proxy_set_header X-Forwarded-For $http_x_forwarded_for;
+        #     proxy_set_header X-Scheme $scheme;
+        #     proxy_pass http://receiver_list;
+        #     proxy_http_version 1.1;
+        #     proxy_set_header Connection "keep-alive";
+        # }
+    }

@@ -1,0 +1,190 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "zookeeper.fullname" . }}
+  namespace:  {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "zookeeper.labels" . | nindent 4 }}
+  annotations: 
+    {{- include "zookeeper.annotations" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.zookeeper.replicaCount }}
+  revisionHistoryLimit: {{ .Values.zookeeper.revisionHistoryLimit }}
+  podManagementPolicy: {{ .Values.zookeeper.podManagementPolicy }}
+  selector:
+    {{- include "zookeeper.labels" . | nindent 4 }}
+  serviceName: {{ include "zookeeper.fullname" . }}
+  {{- if .Values.zookeeper.updateStrategy }}
+  updateStrategy: {{- toYaml .Values.zookeeper.updateStrategy | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      {{- with .Values.zookeeper.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "zookeeper.labels" . | nindent 8 }}
+        {{- with .Values.zookeeper.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.zookeeper.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      affinity:
+        {{- include "zookeeper.podAntiAffinity" . | nindent 8 }}
+      {{- with .Values.zookeeper.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: zookeeper
+          image: "{{ .Values.zookeeper.image.repository }}:{{ .Values.zookeeper.image.tag }}"
+          imagePullPolicy: {{ .Values.zookeeper.image.pullPolicy | quote }}
+          {{- if .Values.zookeeper.containerSecurityContext.enabled }}
+          {{- with .Values.zookeeper.containerSecurityContext }}
+          securityContext: 
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.zookeeper.resources | nindent 12 }}
+          {{- with .Values.zookeeper.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          command: 
+            - /scripts/setup.sh
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: BITNAMI_DEBUG
+              value: {{ ternary "true" "false" (or .Values.zookeeper.image.debug .Values.zookeeper.diagnosticMode.enabled) | quote }}
+            - name: ZOO_DATA_LOG_DIR
+              value: {{ .Values.zookeeper.dataLogDir | quote }}
+            - name: ZOO_PORT_NUMBER
+              value: {{ .Values.zookeeper.containerPorts.client | quote }}
+            - name: ZOO_TICK_TIME
+              value: {{ .Values.zookeeper.tickTime | quote }}
+            - name: ZOO_INIT_LIMIT
+              value: {{ .Values.zookeeper.initLimit | quote }}
+            - name: ZOO_SYNC_LIMIT
+              value: {{ .Values.zookeeper.syncLimit | quote }}
+            - name: ZOO_PRE_ALLOC_SIZE
+              value: {{ .Values.zookeeper.preAllocSize | quote }}
+            - name: ZOO_SNAPCOUNT
+              value: {{ .Values.zookeeper.snapCount | quote }}
+            - name: ZOO_MAX_CLIENT_CNXNS
+              value: {{ .Values.zookeeper.maxClientCnxns | quote }}
+            - name: ZOO_4LW_COMMANDS_WHITELIST
+              value: {{ .Values.zookeeper.fourlwCommandsWhitelist | quote }}
+            - name: ZOO_LISTEN_ALLIPS_ENABLED
+              value: {{ ternary "yes" "no" .Values.zookeeper.listenOnAllIPs | quote }}
+            - name: ZOO_AUTOPURGE_INTERVAL
+              value: {{ .Values.zookeeper.autopurge.purgeInterval | quote }}
+            - name: ZOO_AUTOPURGE_RETAIN_COUNT
+              value: {{ .Values.zookeeper.autopurge.snapRetainCount | quote }}
+            - name: ZOO_MAX_SESSION_TIMEOUT
+              value: {{ .Values.zookeeper.maxSessionTimeout | quote }}
+            - name: ZOO_SERVERS
+              {{- $replicaCount := int .Values.zookeeper.replicaCount }}
+              {{- $minServerId := int .Values.zookeeper.minServerId }}
+              {{- $followerPort := int .Values.zookeeper.containerPorts.follower }}
+              {{- $electionPort := int .Values.zookeeper.containerPorts.election }}
+              {{- $releaseNamespace := .Release.Namespace | quote  }}
+              {{- $zookeeperFullname := include "zookeeper.fullname" . }}
+              {{- $zookeeperHeadlessServiceName := printf "%s-%s" $zookeeperFullname "headless" | trunc 63  }}
+              {{- $clusterDomain := .Values.zookeeper.clusterDomain }}
+              value: {{ range $i, $e := until $replicaCount }}{{ $zookeeperFullname }}-{{ $e }}.{{ $zookeeperHeadlessServiceName }}.{{ $releaseNamespace }}.svc.{{ $clusterDomain }}:{{ $followerPort }}:{{ $electionPort }}::{{ add $e $minServerId }} {{ end }}
+            - name: ZOO_ENABLE_AUTH
+              value: {{ ternary "yes" "no" .Values.zookeeper.auth.client.enabled | quote }}
+            - name: ZOO_ENABLE_QUORUM_AUTH
+              value: {{ ternary "yes" "no" .Values.zookeeper.auth.quorum.enabled | quote }}
+            - name: ZOO_HEAP_SIZE
+              value: {{ .Values.zookeeper.heapSize | quote }}
+            - name: ZOO_LOG_LEVEL
+              value: {{ .Values.zookeeper.logLevel | quote }}
+            - name: ALLOW_ANONYMOUS_LOGIN
+              value: {{ ternary "no" "yes" .Values.zookeeper.auth.client.enabled | quote }}
+            {{- if .Values.zookeeper.jvmFlags }}
+            - name: JVMFLAGS
+              value: {{ .Values.zookeeper.jvmFlags | quote }}
+            {{- end }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: ZOO_ADMIN_SERVER_PORT_NUMBER
+              value: {{ .Values.zookeeper.containerPorts.adminServer | quote }}
+          ports:
+            {{- if not .Values.zookeeper.service.disableBaseClientPort }}
+            - name: client
+              containerPort: {{ .Values.zookeeper.containerPorts.client }}
+            {{- end }}
+            {{- if gt (int .Values.zookeeper.replicaCount) 1 }}
+            {{- /* These ports are only open when there are more than 1 replica */}}
+            - name: follower
+              containerPort: {{ .Values.zookeeper.containerPorts.follower }}
+            - name: election
+              containerPort: {{ .Values.zookeeper.containerPorts.election }}
+            {{- end }}
+            - name: http-admin
+              containerPort: {{ .Values.zookeeper.containerPorts.adminServer }}
+          {{- if not .Values.zookeeper.diagnosticMode.enabled }}
+          {{- if .Values.zookeeper.customLivenessProbe }}
+          livenessProbe:
+            {{- toYaml .Values.zookeeper.livenessProbe | nindent 12 }}
+            exec:
+              command:
+                - /bin/bash
+                - -ec
+                - ZOO_HC_TIMEOUT={{ .Values.zookeeper.livenessProbe.probeCommandTimeout }} /opt/bitnami/scripts/zookeeper/healthcheck.sh
+          {{- end }}
+          {{- if .Values.zookeeper.customReadinessProbe }}
+          readinessProbe:
+            {{- toYaml .Values.zookeeper.readinessProbe | nindent 12 }}
+            exec:
+              command:
+                - /bin/bash
+                - -ec
+                - ZOO_HC_TIMEOUT={{ .Values.zookeeper.readinessProbe.probeCommandTimeout }} /opt/bitnami/scripts/zookeeper/healthcheck.sh
+          {{- end }}
+          {{- end }}
+          volumeMounts:
+            - name: empty-dir
+              mountPath: /tmp
+              subPath: tmp-dir
+            - name: empty-dir
+              mountPath: /opt/bitnami/zookeeper/conf
+              subPath: app-conf-dir
+            - name: empty-dir
+              mountPath: /opt/bitnami/zookeeper/logs
+              subPath: app-logs-dir
+            - name: scripts
+              mountPath: /scripts/setup.sh
+              subPath: setup.sh
+            - name: data
+              mountPath: /bitnami/zookeeper
+      volumes:
+        - name: empty-dir
+          emptyDir: {}
+        - name: scripts
+          configMap:
+            name: {{ printf "%s-scripts" (include "zookeeper.fullname" .) }}
+            defaultMode: 493
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: data
+      spec:
+        accessModes:
+          - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: {{ .Values.zookeeper.persistence.size | quote }}

@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "crash.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "crash.labels" . | nindent 4 }}
+  annotations:
+    {{- include "crash.annotations" . | nindent 4 }}
+spec:
+  {{- if not .Values.crash.autoscaling.enabled }}
+  replicas: {{ .Values.crash.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ include "crash.fullname" . }}
+  template:
+    metadata:
+      {{- with .Values.crash.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "crash.labels" . | nindent 8 }}
+        {{- with .Values.crash.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.crash.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: crash
+          image: "{{ .Values.crash.image.repository }}:{{ .Values.crash.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.crash.image.pullPolicy }}
+          {{- if .Values.crash.serviceAccountName }}
+          serviceAccountName: {{ .Values.crash.serviceAccountName | quote }}
+          {{- end }}
+          env:
+            - name: TZ
+              value: Asia/Shanghai      
+          ports:
+            - name: tcp
+              containerPort: {{ .Values.crash.service.port }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.crash.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.crash.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.crash.resources | nindent 12 }}
+          {{- with .Values.crash.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.crash.volumes }}
+      volumes:
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.crash.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.crash.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.crash.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kafka.fullname" . }}-conf
+  namespace: {{ .Release.Namespace | quote }}
+  labels: 
+    app: {{ include "kafka.fullname" . }}-conf
+data:
+  server.properties: |-
+    # Listeners configuration
+    listeners=CLIENT://:9092,INTERNAL://:9094,CONTROLLER://:9093
+    advertised.listeners=CLIENT://advertised-address-placeholder:9092,INTERNAL://advertised-address-placeholder:9094
+    listener.security.protocol.map=CLIENT:PLAINTEXT,INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+    # KRaft process roles
+    process.roles=controller,broker
+    controller.listener.names=CONTROLLER
+    controller.quorum.voters={{ include "kafka.kraft.controllerQuorumVoters" . }}
+    # Kafka data logs directory
+    log.dir=/bitnami/kafka/data
+    # Kafka application logs directory
+    logs.dir=/opt/bitnami/kafka/logs
+     # Interbroker configuration
+    inter.broker.listener.name=INTERNAL
+    
+    # Common Kafka Configuration

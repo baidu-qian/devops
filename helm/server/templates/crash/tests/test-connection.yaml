@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "crash.fullname" . }}-test-connection"
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "crash.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['nc']
+      args: ['-vz ','{{ include "crash.fullname" . }}', '{{ .Values.crash.service.port }}']
+  restartPolicy: Never

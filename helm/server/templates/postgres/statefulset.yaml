@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "postgres.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "postgres.labels" . | nindent 4 }}
+  annotations:
+    {{- include "postgres.annotations" . | nindent 4 }}
+spec:
+  podManagementPolicy: {{ .Values.postgres.podManagementPolicy }}
+  selector:
+    matchLabels:
+      app: {{ include "postgres.fullname" . }}
+  serviceName:  {{ include "postgres.fullname" . }}-headless
+  updateStrategy: {{- toYaml .Values.postgres.updateStrategy | nindent 4 }}
+  template:
+    metadata:
+      {{- with .Values.postgres.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "postgres.labels" . | nindent 8 }}
+        {{- with .Values.postgres.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.postgres.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.postgres.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers: 
+        - name: postgres
+          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          {{- if .Values.postgres.serviceAccountName }}
+          serviceAccountName: {{ .Values.postgres.serviceAccountName | quote }}
+          {{- end }}
+          {{- with .Values.postgres.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 8 }}
+          {{- end }}
+          {{- with .Values.postgres.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            - name: BITNAMI_DEBUG
+              value: {{ .Values.postgres.env.BITNAMI_DEBUG | quote}}
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                    fieldPath: metadata.name
+            - name: POSTGRESQL_PORT_NUMBER
+              value: {{ .Values.postgres.service.port | quote }}
+            - name: POSTGRESQL_VOLUME_DIR
+              value: {{ .Values.postgres.env.POSTGRESQL_VOLUME_DIR | quote  }}
+            - name: PGDATA
+              value: {{ .Values.postgres.env.PGDATA | quote  }}
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.postgres.env.POSTGRES_PASSWORD | quote  }}
+            - name: POSTGRESQL_ENABLE_LDAP
+              value: {{ .Values.postgres.env.POSTGRESQL_ENABLE_LDAP | quote  }}
+            - name: POSTGRESQL_ENABLE_TLS
+              value: {{ .Values.postgres.env.POSTGRESQL_ENABLE_TLS | quote  }}
+            - name: POSTGRESQL_LOG_HOSTNAME
+              value: {{ .Values.postgres.env.POSTGRESQL_LOG_HOSTNAME | quote  }}
+            - name: POSTGRESQL_LOG_CONNECTIONS
+              value: {{ .Values.postgres.env.POSTGRESQL_LOG_CONNECTIONS | quote  }}
+            - name: POSTGRESQL_LOG_DISCONNECTIONS
+              value: {{ .Values.postgres.env.POSTGRESQL_LOG_DISCONNECTIONS | quote  }}
+            - name: POSTGRESQL_PGAUDIT_LOG_CATALOG
+              value: {{ .Values.postgres.env.POSTGRESQL_PGAUDIT_LOG_CATALOG | quote  }}
+            - name: POSTGRESQL_CLIENT_MIN_MESSAGES
+              value: {{ .Values.postgres.env.POSTGRESQL_CLIENT_MIN_MESSAGES | quote }}
+            - name: POSTGRESQL_SHARED_PRELOAD_LIBRARIES
+              value: {{ .Values.postgres.env.POSTGRESQL_SHARED_PRELOAD_LIBRARIES | quote }}
+          ports:
+            - name: tcp
+              containerPort: {{ .Values.postgres.service.port }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.postgres.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.postgres.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.postgres.resources | nindent 12 }}
+          {{- with .Values.postgres.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.postgres.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.postgres.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.postgres.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.postgres.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- with .Values.postgres.volumeClaimTemplates }}
+  volumeClaimTemplates:
+      {{- toYaml . | nindent 2 }}
+  {{- end }}
+

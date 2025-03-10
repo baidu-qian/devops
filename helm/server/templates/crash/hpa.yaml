@@ -1,0 +1,33 @@
+{{- if .Values.crash.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "crash.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "crash.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "crash.fullname" . }}
+  minReplicas: {{ .Values.crash.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.crash.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.crash.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.crash.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.crash.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.crash.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}

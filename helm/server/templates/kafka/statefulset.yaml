@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "kafka.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "kafka.labels" . | nindent 4 }}
+  annotations:
+    {{- include "kafka.annotations" . | nindent 4 }}
+spec:
+  podManagementPolicy: {{ .Values.kafka.podManagementPolicy }}
+  {{- if not .Values.kafka.autoscaling.enabled }}
+  replicas: {{ .Values.kafka.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ include "kafka.fullname" . }}
+  serviceName:  {{ include "kafka.fullname" . }}-headless
+  updateStrategy: {{- toYaml .Values.kafka.updateStrategy | nindent 4 }}
+  template:
+    metadata:
+      {{- with .Values.kafka.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "kafka.labels" . | nindent 8 }}
+        {{- with .Values.kafka.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.kafka.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.kafka.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: kafka-init
+          image:  "{{ .Values.kafka.image.repository }}:{{ .Values.kafka.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.kafka.image.pullPolicy }}
+          {{- if .Values.kafka.serviceAccountName }}
+          serviceAccountName: {{ .Values.kafka.serviceAccountName | quote }}
+          {{- end }}
+          {{- with .Values.kafka.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 8 }}
+          {{- end }}
+          {{- with .Values.kafka.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.kafka.resources | nindent 12 }}
+          command:
+            - /bin/bash
+          args:
+            - -ec
+            -  /scripts/kafka-init.sh
+          env:
+            - name: BITNAMI_DEBUG
+              value: {{ .Values.kafka.env.BITNAMI_DEBUG | quote }}
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                    fieldPath: metadata.name
+            - name: KAFKA_VOLUME_DIR
+              value: {{ .Values.kafka.env.KAFKA_VOLUME_DIR | quote }}
+            - name: KAFKA_MIN_ID
+              value: {{ .Values.kafka.env.KAFKA_MIN_ID | quote }}
+          {{- with .Values.kafka.volumeMounts.init }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      containers: 
+        - name: kafka
+          image: "{{ .Values.kafka.image.repository }}:{{ .Values.kafka.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.kafka.image.pullPolicy }}
+          {{- if .Values.kafka.serviceAccountName }}
+          serviceAccountName: {{ .Values.kafka.serviceAccountName | quote }}
+          {{- end }}
+          {{- with .Values.kafka.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 8 }}
+          {{- end }}
+          {{- with .Values.kafka.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            - name: BITNAMI_DEBUG
+              value: {{ .Values.kafka.env.BITNAMI_DEBUG | quote }}
+            - name: KAFKA_HEAP_OPTS
+              value: {{ .Values.kafka.env.KAFKA_HEAP_OPTS | quote }}
+            - name: KAFKA_KRAFT_CLUSTER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "kafka.fullname" . }}-secret
+                  key: kraft-cluster-id
+          ports:
+            - name: controller
+              containerPort: {{ .Values.kafka.service.ports.interbroker }}
+              protocol: TCP
+            - name: client
+              containerPort: {{ .Values.kafka.service.ports.client }}
+              protocol: TCP
+            - name: interbroker
+              containerPort: {{ .Values.kafka.service.ports.controller }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.kafka.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.kafka.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.kafka.resources | nindent 12 }}
+          {{- with .Values.kafka.volumeMounts.containers }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.kafka.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.kafka.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.kafka.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.kafka.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- with .Values.kafka.volumeClaimTemplates }}
+  volumeClaimTemplates:
+      {{- toYaml . | nindent 2 }}
+  {{- end }}

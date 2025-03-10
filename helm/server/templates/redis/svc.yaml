@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Release.Namespace | quote }}
+  name: {{ include "redis.fullname" . }}
+spec:
+  clusterIP: None
+  # type: NodePort
+  ports:
+  - port: {{ .Values.redis.service.ports.client }}
+    targetPort: {{ .Values.redis.service.ports.client }}
+    name: client
+  - port: {{ .Values.redis.service.ports.cluster }}
+    targetPort: {{ .Values.redis.service.ports.cluster }}
+    name: gossip
+  selector:
+    {{- include "redis.selectorLabels" . | nindent 4 }}

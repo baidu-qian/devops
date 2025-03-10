@@ -1,0 +1,142 @@
+{{- if (eq .Values.minio.mode "distributed") }}
+{{- $fullname := include "minio.fullname" . }}
+{{- $headlessService := printf "%s-headless" (include "minio.fullname" .) | trunc 63 }}
+{{- $releaseNamespace := .Release.Namespace }}
+{{- $clusterDomain := .Values.minio.clusterDomain }}
+{{- $apiPort := toString .Values.minio.service.ports.minioApi }}
+{{- $replicaCount := int .Values.minio.replicaCount }}
+{{- $mountPath := .Values.minio.persistence.mountPath }}
+{{- $zoneCount := 1 }}
+{{- $drivesPerNode := 1 }}
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "minio.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+  annotations:
+    {{- include "minio.annotations" . | nindent 4 }}
+spec:
+  podManagementPolicy: {{ .Values.minio.podManagementPolicy }}
+  {{- if not .Values.minio.autoscaling.enabled }}
+  replicas: {{ .Values.minio.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ include "minio.fullname" . }}
+  serviceName:  {{ include "minio.fullname" . }}-headless
+  updateStrategy: {{- toYaml .Values.minio.updateStrategy | nindent 4 }}
+  template:
+    metadata:
+      {{- with .Values.minio.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "minio.labels" . | nindent 8 }}
+        {{- with .Values.minio.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.minio.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.minio.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers: 
+        - name: minio
+          image: "{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.minio.image.pullPolicy }}
+          {{- if .Values.minio.serviceAccountName }}
+          serviceAccountName: {{ .Values.minio.serviceAccountName | quote }}
+          {{- end }}
+          {{- with .Values.minio.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 8 }}
+          {{- end }}
+          {{- with .Values.minio.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            - name: BITNAMI_DEBUG
+              value: {{ .Values.minio.env.BITNAMI_DEBUG | quote}}
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                    fieldPath: metadata.name
+            - name: MINIO_DISTRIBUTED_MODE_ENABLED
+              value: {{ .Values.minio.env.MINIO_DISTRIBUTED_MODE_ENABLED | quote }}
+            - name: MINIO_DISTRIBUTED_NODES
+              {{- $clusters := list }}
+              {{- range $i := until $zoneCount }}
+                  {{- $factor := mul $i $replicaCount }}
+                  {{- $endIndex := sub (add $factor $replicaCount) 1 }}
+                  {{- $beginIndex := mul $i $replicaCount }}
+                  {{- $bucket := ternary (printf "%s-{0...%d}" $mountPath (sub $drivesPerNode 1)) $mountPath (gt $drivesPerNode 1) }}
+                  {{- $clusters = append $clusters (printf "%s-{%d...%d}.%s.%s.svc.%s:%s%s" $fullname $beginIndex $endIndex $headlessService $releaseNamespace $clusterDomain $apiPort $bucket) }}
+              {{- end }}
+              value: {{ join "," $clusters | quote }}
+            - name: MINIO_SCHEME
+              value: {{ .Values.minio.env.MINIO_SCHEME | quote  }}
+            - name: MINIO_FORCE_NEW_KEYS
+              value: {{ .Values.minio.env.MINIO_FORCE_NEW_KEYS | quote  }}
+            - name: MINIO_ROOT_USER
+              value: {{ .Values.minio.env.MINIO_ROOT_USER | quote  }}
+            - name: MINIO_ROOT_PASSWORD
+              value: {{ .Values.minio.env.MINIO_ROOT_PASSWORD | quote  }}
+            - name: MINIO_SKIP_CLIENT
+              value: {{ .Values.minio.env.MINIO_SKIP_CLIENT | quote  }}
+            - name: MINIO_BROWSER
+              value: {{ .Values.minio.env.MINIO_BROWSER | quote  }}
+            - name: MINIO_PROMETHEUS_AUTH_TYPE
+              value: {{ .Values.minio.env.MINIO_PROMETHEUS_AUTH_TYPE | quote  }}
+            - name: MINIO_API_PORT_NUMBER
+              value: {{ .Values.minio.service.ports.minioApi | quote  }}
+            - name: MINIO_CONSOLE_PORT_NUMBER
+              value: {{ .Values.minio.service.ports.minioConsole | quote  }}
+            - name: MINIO_DATA_DIR
+              value: {{ .Values.minio.persistence.mountPath | quote }}
+          ports:
+            - name: minio-api
+              containerPort: {{ .Values.minio.service.ports.minioApi }}
+              protocol: TCP
+            - name: minio-console
+              containerPort: {{ .Values.minio.service.ports.minioConsole }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.minio.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.minio.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.minio.resources | nindent 12 }}
+          {{- with .Values.minio.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.minio.volumes.distributed }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.minio.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.minio.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.minio.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- with .Values.minio.volumeClaimTemplates }}
+  volumeClaimTemplates:
+      {{- toYaml . | nindent 2 }}
+  {{- end }}
+{{- end }}
