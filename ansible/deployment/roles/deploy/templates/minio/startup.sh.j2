@@ -1,0 +1,13 @@
+#!/bin/bash
+
+docker run --init --name=minio \
+ -v /etc/hosts:/etc/hosts \
+ -v /home/{{ admin_user }}/server/minio/data/:/data \
+ --env TZ=PRC \
+ --env MINIO_ROOT_USER=admin \
+ --env MINIO_ROOT_PASSWORD=admin4 \
+ --network admin_network \
+ -p {{ minio_tcp_port }}:{{ minio_tcp_port }} \
+ -p {{ minio_http_port }}:{{ minio_http_port }} \
+ --rm {{ harbor_ip }}/admin/minio:latest \
+ server /data --console-address ':9001'

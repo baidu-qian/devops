@@ -1,0 +1,9 @@
+---
+- name: start zookeeper
+  shell: "su - {{ admin_user }} -c \"./server/zookeeper/bin/service.sh start\""
+
+- name: stop zookeeper
+  shell: "su - {{ admin_user }} -c \"./server/zookeeper/bin/service.sh stop\""
+
+- name: restart zookeeper
+  shell: "su - {{ admin_user }} -c \"./server/zookeeper/bin/service.sh restart\""

@@ -1,0 +1,6 @@
+#!/bin/bash
+
+backupdate=`date +%Y%m%d`
+docker exec -i postgres bash -c "pg_dump -U admin_pg -d admin_admin_v4 -c -C -f /tmp/backups/pg_backup_${backupdate}.sql"
+
+find /home/admin/server/postgres/backups -mtime +10 -name "pg_backup*.sql" -exec rm -f {} \;

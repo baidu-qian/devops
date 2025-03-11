@@ -1,0 +1,9 @@
+process_names:
+{% for i in mappinglist %}
+  - name: {% raw %}"{{.Matches}}"{% endraw %}
+
+    cmdline:
+    - "{{ i }}"
+
+{% endfor %}
+

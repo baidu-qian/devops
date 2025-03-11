@@ -1,0 +1,76 @@
+---
+# tags: deploy_elasticsearch
+
+- import_tasks: createUser.yml
+
+- name: 创建部署所需要的目录 
+  file:
+    path: "/home/{{ admin_user }}/server/elasticsearchMaster/{{ item }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+    recurse: yes
+    state: directory
+  with_items:
+    - bin
+    - logs
+    - data
+    - plugins
+
+- name: copy elasticsearchMaster
+  unarchive:
+    src: "{{ elasticsearchXpack_tarball_name }}"
+    dest: "/home/{{ admin_user }}/server/elasticsearchMaster"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+
+- name: elasticsearchMaster软连接到/home/{{ admin_user }}/server/elasticsearchMaster/elasticsearch
+  file:
+    src: "/home/{{ admin_user }}/server/elasticsearchMaster/elasticsearch-6.8.5"
+    dest: "/home/{{ admin_user }}/server/elasticsearchMaster/elasticsearch"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    state: link
+    follow: False
+
+- name: chmod elasticsearchmaster bin
+  command: "chmod -R 755 /home/{{ admin_user }}/server/elasticsearchMaster/elasticsearch/bin"
+
+- name: 配置elasticsearchMaster服务配置文件及脚本
+  template:
+    src: "elasticsearch/{{ item.key }}"
+    dest: "/home/{{ admin_user }}/server/elasticsearchMaster/{{ item.value }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  with_items:
+    - { key: 'elasticsearchMaster.yml.j2' , value: 'elasticsearch/config/elasticsearch.yml' }
+    - { key: 'jvm.options.j2' , value: 'elasticsearch/config/jvm.options' }
+    - { key: 'log4j2.properties.j2' , value: 'elasticsearch/config/log4j2.properties' }
+    - { key: 'admin_es_dog.sh.j2' , value: 'bin/admin_es_dog.sh' }
+    - { key: 'service.sh.j2' , value: 'bin/service.sh' }
+    - { key: 'startup_elasticsearchMaster.sh.j2' , value: 'bin/startup.sh' }
+
+- name: 在elasticsearchMaster配置文件elasticsearch.yml关闭机器学习
+  become_user: "{{ admin_user }}"
+  lineinfile:
+    path: /home/{{ admin_user }}/server/elasticsearchMaster/elasticsearch/config/elasticsearch.yml
+    line: "{{ item }}"
+  with_items:
+    - 'xpack.ml.enabled: false'
+  when:
+    - ansible_architecture|lower == "aarch64"
+
+
+- name: ready to notify
+  shell: ls
+  notify:
+    - restart elasticsearchMaster
+
+- name: 提前重启服务
+  meta: flush_handlers

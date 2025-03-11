@@ -1,0 +1,12 @@
+#!/bin/bash
+
+PRG="$0"
+BIN=`cd $(dirname "$PRG"); pwd -P`
+HOME=`dirname "$BIN"`
+LIB=`find ${HOME}/zookeeper/ -name "*.jar"`
+classpath="."
+for item in ${LIB}
+do
+  classpath=${classpath}:${item}
+done
+/home/{{ admin_user }}/tools/jdk/bin/java -Dzookeeper.log.dir=/home/{{ admin_user }}/server/zookeeper/zk_data -Dzookeeper.root.logger=INFO,CONSOLE -cp ${classpath} -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.local.only=false org.apache.zookeeper.server.quorum.QuorumPeerMain /home/{{ admin_user }}/server/zookeeper/zookeeper/conf/zoo.cfg

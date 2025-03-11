@@ -1,0 +1,15 @@
+#!/bin/bash
+
+docker run --init --name=postgres \
+ -v /etc/hosts:/etc/hosts \
+ -v /home/{{ admin_user }}/server/postgres/data/:/var/lib/postgresql/data \
+ -v /var/run/postgresql:/var/run/postgresql \
+ -v /home/{{ admin_user }}/server/postgres/backups/:/tmp/backups \
+ --env TZ=PRC \
+ --env PGDATA=/var/lib/postgresql/data \
+ --env POSTGRES_USER=admin_pg \
+ --env POSTGRES_PASSWORD={{ pg_password }} \
+ --env POSTGRES_DB=admin_admin_v4 \
+ --network admin_network \
+ -p {{ postgres_port }}:{{ postgres_port }} \
+ --rm {{ harbor_ip }}/admin/postgres:13.1 

@@ -1,0 +1,7 @@
+#/bin/bash
+source ~/.bash_profile
+{% for i in groups['zookeeper'] %}
+{% if  i  == inventory_hostname %}
+echo {{ loop.index0 }} > /home/{{admin_user}}/server/zookeeper/zk_data/myid
+{% endif %}
+{% endfor %}

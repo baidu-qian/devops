@@ -1,0 +1,33 @@
+version: '3.7'
+
+services:
+    postgres:
+        container_name: postgres
+        image: "{{ harbor_ip }}/admin/postgres:arm-16.2"
+        restart: always
+        privileged: true
+        environment:
+            TZ: PRC
+            PGDATA: /var/lib/postgresql/data
+            POSTGRES_USER: admin_pg
+            POSTGRES_PASSWORD: {{ pg_password }}
+            POSTGRES_DB: admin_admin_v4
+        ports:
+            - {{ postgres_port }}:{{ postgres_port }}/tcp
+        volumes:
+            - /home/{{ admin_user }}/server/postgres/data/:/var/lib/postgresql/data
+            - /var/run/postgresql:/var/run/postgresql
+            - /home/admin/server/postgres/backups/:/tmp/backups
+            - /home/{{ admin_user }}/server/postgres/config/.pgpass:/root/.pgpass
+        # command:
+        #     /usr/local/bin/redis-server /usr/local/etc/redis/redis.conf
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "10m"
+                max-file: "3"
+        networks:
+            - admin_network
+networks:
+  admin_network:
+    external: true

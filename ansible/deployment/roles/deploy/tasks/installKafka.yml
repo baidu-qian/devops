@@ -1,0 +1,83 @@
+---
+# tags: deploy_kafka
+
+- name: check docker.pid
+  stat: 
+    path: "/run/docker.pid"
+  register: dockerpid_output
+  
+- name: check users
+  stat: 
+    path: "/home/{{ admin_user }}/app"
+  register: users_output
+
+# - name: 输出users
+#   debug:
+#     msg: "{{ users_output }}"
+
+- import_tasks: createUser.yml
+  when: users_output.stat.exists != True
+- import_tasks: dockerEnv.yml
+  when: dockerpid_output.stat.exists != True
+
+- name: 创建kafka的bin目录
+  file:
+    path: "/home/{{ admin_user }}/server/kafka/{{ item }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+    recurse: yes
+    state: directory
+  with_items:
+    - data/kafka-logs
+    - bin
+
+- name: 安装kafka包
+  unarchive:
+    src: "{{ kafka_tarball_name }}"
+    dest: "/home/{{ admin_user }}/server/kafka"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+
+- name: kafka软连接到/home/{{ admin_user }}/server/kafka/kafka
+  file:
+    src: "/home/{{ admin_user }}/server/kafka/{{ kafka_name }}"
+    dest: "/home/{{ admin_user }}/server/kafka/kafka"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    state: link
+    follow: False
+
+- name: 配置kafka的配置文件及脚本
+  template:
+    src: "kafka/{{ item.key }}"
+    dest: "/home/{{ admin_user }}/server/{{ item.value }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  with_items:
+    - { key: 'server.properties.j2' , value: 'kafka/kafka/config/server.properties' }
+    - { key: 'log4j.properties.j2' , value: 'kafka/kafka/config/log4j.properties' }
+    - { key: 'kafka_dog.sh.j2' , value: 'kafka/bin/kafka_dog.sh' }
+    - { key: 'service.sh.j2' , value: 'kafka/bin/service.sh' }
+    - { key: 'startup.sh.j2' , value: 'kafka/bin/startup.sh' }
+
+- name: apply kafka-run-class file, only for aarch64
+  copy:
+    src: "server/kafka/kafka-run-class.sh"
+    dest: "/home/{{ admin_user }}/server/kafka/kafka/bin/kafka-run-class.sh"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    mode: 0755
+  when: ansible_architecture|lower == "aarch64"
+
+- name: ready to notify
+  shell: ls
+  notify:
+    - restart kafka
+
+- name: 提前重启服务
+  meta: flush_handlers

@@ -1,0 +1,30 @@
+<configuration>
+        <property>
+            <name>fs.defaultFS</name>
+            <value>hdfs://admin</value>
+        </property>
+        <property>
+            <name>hadoop.tmp.dir</name>
+            <value>/home/{{ admin_user }}/server/hadoop/data/tmpdata</value>
+        </property>
+        <property>
+            <name>io.file.buffer.size</name>
+            <value>10240</value>
+        </property>
+        <property>
+            <name>ha.zookeeper.quorum</name>
+            <value>{% for i in groups['zookeeper'] %}{{ hostvars[i]['ansible_hostname'] }}:{{ zookeeper_port }} {%- if not loop.last %},{% endif -%} {% endfor %}</value>
+        </property>
+        <property>
+            <name>ha.zookeeper.session-timeout.ms</name>
+            <value>1000</value>
+        </property>
+        <property>
+            <name>hadoop.proxyuser.hadoop.hosts</name>
+            <value>*</value>
+        </property>
+        <property>
+            <name>hadoop.proxyuser.hadoop.groups</name>
+            <value>*</value>
+        </property>
+</configuration>

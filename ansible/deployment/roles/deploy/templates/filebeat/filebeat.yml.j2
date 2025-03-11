@@ -1,0 +1,76 @@
+#filebeat.prospectors:
+filebeat.inputs:
+
+- type: log
+  enabled: true
+  fields:
+    service: "elasticsearchClient"
+  tags: ["elasticsearchClient"]
+  paths:
+    - /home/{{ admin_user }}/server/ElasticsearchClient/log/admin_es.log
+  multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+  multiline.negate: false
+  multiline.match: after
+
+- type: log
+  enabled: true
+  fields:
+    service: "elasticsearchMaster"
+  tags: ["elasticsearchMaster"]
+  paths:
+    - /home/{{ admin_user }}/server/ElasticsearchMaster/log/admin_es.log
+  multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+  multiline.negate: false
+  multiline.match: after
+
+- type: log
+  enabled: true
+  fields:
+    service: "hbase"
+  tags: ["hbase"]
+  paths:
+    - /home/{{ admin_user }}/server/hbase/hbase/logs/hbase-admin-*.log
+  multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+  multiline.negate: false
+  multiline.match: after
+
+- type: log
+  enabled: true
+  fields:
+    service: "kafka"
+  tags: ["kafka"]
+  paths:
+    - /home/{{ admin_user }}/server/kafka/kafka/logs/*.log
+  multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+  multiline.negate: false
+  multiline.match: after
+
+- type: log
+  enabled: true
+  fields:
+    service: "nginx"
+  tags: ["nginx"]
+  paths:
+    - /home/{{ admin_user }}/server/nginx/logs/error.log
+  multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+  multiline.negate: false
+  multiline.match: after
+
+- type: log
+  enabled: true
+  fields:
+    service: "zookeeper"
+  tags: ["zookeeper"]
+  paths:
+    - /home/{{ admin_user }}/server/zookeeper/zk_data/zookeeper.out
+  multiline.pattern: '^org\.|^[[:space:]]+(at|\.{3})\b|^Caused by:|^java\.'
+  multiline.negate: false
+  multiline.match: after
+
+output.kafka:
+  enabled: true
+#  hosts: ["{% for i in groups['kafka'] %}{{ i }}:{{ kafka_port }} {%- if not loop.last %},{% endif -%} {% endfor %}"]
+  hosts: "{{ groups['kafka'][0] }}:{{ kafka_port }}"
+  topic: admin_elk
+#output.logstash:
+#  hosts: ["172.16.36.144:14100"]

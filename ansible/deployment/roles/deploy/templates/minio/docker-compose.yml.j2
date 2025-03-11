@@ -1,0 +1,30 @@
+version: '3.7'
+
+services:
+    minio:
+        container_name: minio
+        image: "{{ harbor_ip }}/admin/minio:2024.2.4"
+        privileged: true
+        restart: always
+        environment:
+            TZ: PRC
+            MINIO_ROOT_USER: "{{ minio_user }}"
+            MINIO_ROOT_PASSWORD: "{{ minio_password }}"
+        ports:
+            - {{ minio_tcp_port }}:{{ minio_tcp_port }}/tcp
+            - {{ minio_http_port }}:{{ minio_http_port }}/tcp
+        volumes:
+            - /home/{{ admin_user }}/server/minio/data/:/data
+        command:
+            minio server /data --console-address ':9001'
+
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "10m"
+                max-file: "3"
+        networks:
+            - admin_network
+networks:
+  admin_network:
+    external: true

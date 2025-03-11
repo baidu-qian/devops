@@ -1,0 +1,14 @@
+#!/bin/bash
+
+docker run --init --name=elasticsearch \
+ -v /etc/hosts:/etc/hosts \
+ -v /home/{{ admin_user }}/ops/elk/elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml \
+ -v /home/{{ admin_user }}/ops/elk/elasticsearch/data:/usr/share/elasticsearch/data \
+ --env ES_JAVA_OPTS="-Xms512M -Xmx512M" \
+ --env ELASTIC_PASSWORD={{ elk_password }} \
+ --env discovery.type=single-node  \
+ --env TZ=PRC \
+ -p "{{ elk_es_restful_port }}:{{ elasticsearch_master_port }}" \
+ -p "{{ elk_es_tcp_port }}:{{ elasticsearch_master_tcp_port }}" \
+ --network admin_network \
+ --rm docker.elastic.co/elasticsearch/elasticsearch:7.16.2

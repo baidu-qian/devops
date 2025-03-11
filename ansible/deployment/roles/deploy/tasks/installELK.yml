@@ -1,0 +1,115 @@
+---
+# tags: install_ELK
+
+- name: check docker.pid
+  stat: 
+    path: "/run/docker.pid"
+  register: dockerpid_output
+  
+- name: check users
+  stat: 
+    path: "/home/{{ admin_user }}/app"
+  register: users_output
+
+# - name: 输出users
+#   debug:
+#     msg: "{{ users_output }}"
+
+- import_tasks: createUser.yml
+  when: users_output.stat.exists != True
+- import_tasks: dockerEnv.yml
+  when: dockerpid_output.stat.exists != True
+
+- name: 安装ELK包
+  unarchive:
+    src: "{{ elk_tarball_name }}"
+    dest: "/home/{{ admin_user }}/ops/"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  notify:
+    - restart elk
+
+- name: 创建部署所需要的目录 
+  file:
+    path: "/home/{{ admin_user }}/ops/elk/elasticsearch/data"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0777
+    recurse: yes
+    state: directory
+
+- name: load ELK image
+  command: "docker load -i /home/{{ admin_user }}/ops/elk/images/{{ item }}"
+  with_items: 
+    - elasticsearch.tar
+    - kibana.tar
+    - logstash.tar
+
+- name: 创建部署所需要的目录 
+  file:
+    path: "/home/{{ admin_user }}/ops/elk/{{ item }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+    recurse: yes
+    state: directory
+  with_items:
+    - bin
+    - logs
+
+# - name: 创建部署所需要的日志
+#   file:
+#     path: "/home/{{ admin_user }}/ops/nginx/{{ item }}"
+#     owner: "{{ admin_user }}"
+#     group: "{{ admin_user }}"
+#     force: yes
+#     mode: 0755
+#     # recurse: yes
+#     state: touch
+#   with_items:
+#     - logs/error.log
+
+- name: crontab job to clean es when index > one month (30 days)
+  become_user: "{{ admin_user }}"
+  cron:
+    name: "clean es job"
+    hour: "0"
+    user: "{{ admin_user }}"
+    job: "/home/{{ admin_user }}/ops/elk/bin/clean.sh > /tmp/elk_clean.txt"
+
+- name: 配置elk服务配置文件及脚本
+  template:
+    src: "elk/{{ item.key }}"
+    dest: "/home/{{ admin_user }}/ops/elk/{{ item.value }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  with_items:
+    - { key: 'elasticsearch/elasticsearch.yml.j2' , value: 'elasticsearch/config/elasticsearch.yml' }
+    - { key: 'kibana/kibana.yml.j2' , value: 'kibana/config/kibana.yml' }
+    - { key: 'logstash/config/logstash.yml.j2' , value: 'logstash/config/logstash.yml' }
+    - { key: 'logstash/pipeline/logstash.conf.j2' , value: 'logstash/pipeline/logstash.conf' }
+    - { key: 'docker-compose.yml.j2' , value: 'bin/docker-compose.yml' }
+    - { key: 'service.sh.j2' , value: 'bin/service.sh' }
+    - { key: 'clean.sh.j2' , value: 'bin/clean.sh' }
+    - { key: '.env.j2' , value: 'bin/.env' }
+    - { key: 'startup_es.sh.j2' , value: 'bin/startup_es.sh' }
+    - { key: 'startup_logstash.sh.j2' , value: 'bin/startup_logstash.sh' }
+    - { key: 'startup_kibana.sh.j2' , value: 'bin/startup_kibana.sh' }
+  # notify:
+  #   - restart elk
+
+
+
+- name: ready to notify
+  shell: ls
+  notify:
+    - restart elk
+
+- name: 提前重启服务
+  meta: flush_handlers

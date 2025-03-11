@@ -1,0 +1,9 @@
+---
+- name: start redis
+  shell: "su - {{ admin_user }} -c \"~/server/redis/bin/service.sh start\""
+
+- name: stop redis
+  shell: "su - {{ admin_user }} -c \"~/server/redis/bin/service.sh stop\""
+
+- name: restart redis
+  shell: "su - {{ admin_user }} -c \"~/server/redis/bin/service.sh restart\""

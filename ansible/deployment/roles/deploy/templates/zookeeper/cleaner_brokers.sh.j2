@@ -1,0 +1,5 @@
+#!/bin/bash
+source ~/.bash_profile
+/home/{{ admin_user }}/server/zookeeper/zookeeper/bin/zkCli.sh -server localhost:{{ zookeeper_port }}<<EOF 
+rmr /brokers
+EOF

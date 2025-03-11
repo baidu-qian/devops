@@ -1,0 +1,27 @@
+port {{ redis_port }}
+bind 0.0.0.0
+maxmemory {{ ((ansible_memtotal_mb // 1024)+1) // 4 }}gb
+maxmemory-policy volatile-lru
+requirepass {{ redis_password }}
+save 900 1
+save 300 10
+save 60 10000
+dir /data
+appendonly   yes
+appendfilename "appendonly.aof"
+aof-load-truncated  yes
+appendfsync everysec
+auto-aof-rewrite-percentage 100
+auto-aof-rewrite-min-size 64mb
+no-appendfsync-on-rewrite  yes
+loglevel notice
+logfile "/var/log/redis/redis.log"
+rename-command KEYS     ""
+rename-command FLUSHALL ""
+rename-command FLUSHDB  ""
+rename-command CONFIG   ""
+
+cluster-enabled yes
+cluster-config-file /data/nodes.conf
+cluster-node-timeout 5000
+masterauth {{ redis_password }}

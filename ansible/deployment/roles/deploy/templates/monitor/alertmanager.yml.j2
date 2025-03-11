@@ -1,0 +1,22 @@
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'smtp.qiye.163.com:25'
+  smtp_from: 'default@admin.com'
+  smtp_auth_username: 'default@admin.com'
+  smtp_auth_password: 'default'
+
+templates:
+- '/home/{{ admin_user }}/ops/monitor/template/*.tmpl'
+
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: default_receiver
+
+receivers:
+  - name: default_receiver
+    webhook_configs:
+    - url: http://localhost:7000
+      send_resolved: true

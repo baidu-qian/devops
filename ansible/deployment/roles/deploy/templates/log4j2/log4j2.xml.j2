@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="INFO" monitorInterval="5">
+  <Appenders>
+    <!-- 输出到控制台 -->
+    <Console name="Console" target="SYSTEM_OUT">
+      <PatternLayout pattern="[%d{yyyy-MM-dd HH:mm:ss.SSS}][%p][%l]-%m%n"/>
+    </Console>
+    <!-- 输出到 log/logJava.txt -->
+    <Routing name="Routing">
+      <Routes pattern="$${sd:type}">
+        <Route>
+          <RollingFile name="RollingFile" fileName="./log/logJava.txt"
+            filePattern="./log/logJava-%i.txt.gz">
+            <PatternLayout>
+              <pattern>[%d{yyyy-MM-dd HH:mm:ss.SSS}][%p][%l]-%m%n</pattern>
+            </PatternLayout>
+            <SizeBasedTriggeringPolicy size="80 MB"/>
+            <DefaultRolloverStrategy max="9"/>
+          </RollingFile>
+        </Route>
+      </Routes>
+    </Routing>
+    <!--输出到 log/logError.txt -->
+    <Routing name="Error">
+      <Routes pattern="$${sd:type}">
+        <Route>
+          <RollingFile name="ErrorFile" fileName="./log/logError.txt"
+            filePattern="./log/logError-%i.txt.gz">
+            <PatternLayout>
+              <pattern>[%d{yyyy-MM-dd HH:mm:ss.SSS}][%p][%l]-%m%n</pattern>
+            </PatternLayout>
+            <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
+            <SizeBasedTriggeringPolicy size="80 MB"/>
+            <DefaultRolloverStrategy max="9"/>
+          </RollingFile>
+        </Route>
+      </Routes>
+    </Routing>
+    <RollingRandomAccessFile name="ServiceStartStopLog" fileName="./log/service.log"
+      filePattern="./log/bak/service-%d{yyyy-MM-dd}-%i.log.gz">
+      <PatternLayout charset="UTF-8" pattern="[%d{yyyy-MM-dd HH:mm:ss.SSS}][%p][%l]-%m%n"/>
+      <Policies>
+        <SizeBasedTriggeringPolicy size="10 MB"/>
+        <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+      </Policies>
+      <DefaultRolloverStrategy max="10"/>
+    </RollingRandomAccessFile>
+
+    <!-- 黄河农商行syslog数据推送日志-->
+    <RollingRandomAccessFile name="SysLogPushService" fileName="./log/sysLogPush.log"
+      filePattern="./log/sysLogPush-%d{yyyy-MM-dd}-%i.log.gz">
+      <PatternLayout charset="UTF-8" pattern="[%d{yyyy-MM-dd HH:mm:ss.SSS}][%p][%l]-%m%n"/>
+      <Policies>
+        <SizeBasedTriggeringPolicy size="10 MB"/>
+        <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+      </Policies>
+      <DefaultRolloverStrategy max="10"/>
+    </RollingRandomAccessFile>
+
+  </Appenders>
+  <Loggers>
+    <!-- 日志级别 OFF < FATAL < ERROR < WARN < INFO < DEBUG < TRACE < ALL -->
+    <Root level="INFO">
+      <AppenderRef ref="Routing"/>
+      <AppenderRef ref="Console"/>
+      <AppenderRef ref="Error"/>
+    </Root>
+    <logger name="com.admin" level="WARN"/>
+    <logger name="com.admin.ServiceStartStopLog" level="INFO">
+      <appender-ref ref="ServiceStartStopLog" level="INFO"/>
+    </logger>
+
+    <!-- 黄河农商行syslog数据推送日志，单独写到一个log文件中-->
+    <logger name="syslogPushLogger" level="info">
+      <appender-ref ref="SysLogPushService"/>
+    </logger>
+
+  </Loggers>
+</Configuration>

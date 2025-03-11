@@ -1,0 +1,117 @@
+---
+# tags: deploy_zookeeper
+
+- name: check docker.pid
+  stat: 
+    path: "/run/docker.pid"
+  register: dockerpid_output
+  
+- name: check users
+  stat: 
+    path: "/home/{{ admin_user }}/app"
+  register: users_output
+
+# - name: 输出users
+#   debug:
+#     msg: "{{ users_output }}"
+
+- import_tasks: createUser.yml
+  when: users_output.stat.exists != True
+- import_tasks: dockerEnv.yml
+  when: dockerpid_output.stat.exists != True
+
+- name: 创建zookeeper的bin目录
+  file:
+    path: "/home/{{ admin_user }}/server/zookeeper/{{ item }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+    recurse: yes
+    state: directory
+  with_items:
+    - bin
+    - zk_data
+
+- name: 安装zookeeper包
+  unarchive:
+    src: "{{ zookeeper_tarball_name }}"
+    dest: "/home/{{ admin_user }}/server/zookeeper/"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+
+- name: zookeeper软连接到/home/{{ admin_user }}/server/zookeeper/zookeeper
+  file:
+    src: "/home/{{ admin_user }}/server/zookeeper/{{ zookeeper_name }}"
+    dest: "/home/{{ admin_user }}/server/zookeeper/zookeeper"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    state: link
+    follow: False
+
+- name: 配置zookeeper的配置文件及脚本
+  template:
+    src: "zookeeper/{{ item.key }}"
+    dest: "/home/{{ admin_user }}/server/{{ item.value }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  with_items:
+    - { key: 'zoo.cfg.j2' , value: 'zookeeper/zookeeper/conf/zoo.cfg' }
+    - { key: 'log4j.properties.j2' , value: 'zookeeper/zookeeper/conf/log4j.properties' }
+    - { key: 'zk_dog.sh.j2' , value: 'zookeeper/bin/zk_dog.sh' }
+    - { key: 'service.sh.j2' , value: 'zookeeper/bin/service.sh' }
+    - { key: 'setid.sh.j2' , value: 'zookeeper/bin/setid.sh' }
+    - { key: 'startup.sh.j2' , value: 'zookeeper/bin/startup.sh' }
+
+# 适配升级
+# 拷贝4602原数据后再启动zookeeper
+- name: 检查zookeeper是否有data目录
+  stat:
+    path: "../backups/4602/zookeeper/zk_data"
+  register: zk_data
+  ignore_errors: True
+  connection: local
+
+# - name: 检查zookeeper是否有data目录
+#   command:  "ls ../backups/4602/zookeeper/zk_data"
+#   register: zk_data
+#   ignore_errors: True
+
+# - name: 恢复zookeeper
+#   copy:
+#     src: "../backups/4602/zookeeper/zk_data/"
+#     dest: "/home/{{ admin_user }}/server/zookeeper/zk_data/"
+#     owner: "{{ admin_user }}"
+#     group: "{{ admin_user }}"
+#     force: yes
+#     mode: 0755
+#   when: zk_data.stat.exists == True
+
+- name: 配置myid
+  become_user: "{{ admin_user }}"
+  shell: "bash /home/{{ admin_user }}/server/zookeeper/bin/setid.sh"
+
+- name: 配置清除brokers脚本
+  template:
+    src: "zookeeper/cleaner_brokers.sh.j2" #会去从template目录下拉去
+    dest: "/home/{{ admin_user }}/server/zookeeper/bin/cleaner_brokers.sh"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+
+- name: ready to notify
+  shell: ls
+  notify:
+    - restart zookeeper
+
+- name: 提前重启服务
+  meta: flush_handlers
+
+- name: 清除brokers
+  become_user: "{{ admin_user }}"
+  shell: "bash /home/{{ admin_user }}/server/zookeeper/bin/cleaner_brokers.sh"
+  ignore_errors: True

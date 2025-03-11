@@ -1,0 +1,10 @@
+#!/bin/bash
+
+docker run --init --name=redis \
+ -v /etc/hosts:/etc/hosts \
+ -v /home/{{ admin_user }}/server/redis/conf/redis.conf:/usr/local/etc/redis/redis.conf \
+ -v /home/{{ admin_user }}/server/redis/data:/data \
+ --env TZ=PRC \
+ --network admin_network \
+ -p {{ redis_port }}:{{ redis_port }} \
+ --rm {{ harbor_ip }}/admin/redis:6.2.6 /usr/local/etc/redis/redis.conf

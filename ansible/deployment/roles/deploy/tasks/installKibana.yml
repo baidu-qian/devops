@@ -1,0 +1,78 @@
+---
+# tags: deploy_kibana
+
+- name: check docker.pid
+  stat: 
+    path: "/run/docker.pid"
+  register: dockerpid_output
+  
+- name: check users
+  stat: 
+    path: "/home/{{ admin_user }}/app"
+  register: users_output
+
+# - name: 输出users
+#   debug:
+#     msg: "{{ users_output }}"
+
+- import_tasks: createUser.yml
+  when: users_output.stat.exists != True
+- import_tasks: dockerEnv.yml
+  when: dockerpid_output.stat.exists != True
+
+- name: copy kibana
+  unarchive:
+    src: "server/kibana/{{ ansible_architecture|lower }}/{{ kibanaXpack_tarball_name }}"
+    dest: "/home/{{ admin_user }}/server"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+
+- name: kibana软连接到/home/{{ admin_user }}/server/kibana
+  file:
+    src: "/home/{{ admin_user }}/server/kibana-6.8.5"
+    dest: "/home/{{ admin_user }}/server/kibana"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    state: link
+    follow: False
+  when: ansible_architecture|lower == "x86_64"
+
+- name: chmod kibana bin
+  command: "chmod -R 755 /home/{{ admin_user }}/server/kibana"
+
+- name: 配置kibana服务配置文件及脚本
+  template:
+    src: "kibana/{{ item.key }}"
+    dest: "/home/{{ admin_user }}/server/kibana/{{ item.value }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  with_items:
+    - { key: 'kibana.yml.j2' , value: 'config/kibana.yml' }
+    - { key: 'admin_kibana_dog.sh.j2' , value: 'bin/admin_kibana_dog.sh' }
+    - { key: 'service.sh.j2' , value: 'bin/service.sh' }
+    - { key: 'startup.sh.j2' , value: 'bin/startup.sh' }
+
+- name: 在kibana配置文件增加用户认证
+  lineinfile:
+    path: /home/{{ admin_user }}/server/kibana/config/kibana.yml
+    line: "{{ item }}"
+  with_items:
+    - 'elasticsearch.username: "elastic"'
+    - 'elasticsearch.password: "admin"'
+  when: 
+    - add_esxpack == true
+    - ansible_architecture|lower == "x86_64"
+
+- name: ready to notify
+  shell: ls
+  notify:
+    - start kibana
+
+- name: 提前重启服务
+  meta: flush_handlers
+

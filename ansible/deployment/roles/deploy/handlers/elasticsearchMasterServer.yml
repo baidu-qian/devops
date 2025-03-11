@@ -1,0 +1,9 @@
+---
+- name: start elasticsearchMaster
+  shell: "su - {{ admin_user }} -c \" ./server/elasticsearchMaster/bin/service start || ./server/elasticsearchMaster/bin/service.sh start \" "
+
+- name: stop elasticsearchMaster
+  shell: "su - {{ admin_user }} -c \" ./server/elasticsearchMaster/bin/service stop || ./server/elasticsearchMaster/bin/service.sh stop \" "
+
+- name: restart elasticsearchMaster
+  shell: "su - {{ admin_user }} -c \" ./server/elasticsearchMaster/bin/service restart || ./server/elasticsearchMaster/bin/service.sh restart \" "

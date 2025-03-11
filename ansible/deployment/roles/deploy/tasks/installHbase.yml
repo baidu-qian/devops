@@ -1,0 +1,111 @@
+---
+# tags: deploy_hbase
+
+- name: check docker.pid
+  stat: 
+    path: "/run/docker.pid"
+  register: dockerpid_output
+  
+- name: check users
+  stat: 
+    path: "/home/{{ admin_user }}/app"
+  register: users_output
+
+# - name: 输出users
+#   debug:
+#     msg: "{{ users_output }}"
+
+- import_tasks: createUser.yml
+  when: users_output.stat.exists != True
+- import_tasks: dockerEnv.yml
+  when: dockerpid_output.stat.exists != True
+
+
+- name: check hbase
+  stat: 
+    path: "/home/{{ admin_user }}/server/hbase/"
+  register: hbase_output
+
+- name: 停止hbase服务
+  become_user: "{{ admin_user }}"
+  command: "bash /home/{{ admin_user }}/server/hbase/bin/service.sh stop"
+  ignore_errors: True
+  when:
+    - hbase_output.stat.exists == True
+
+- name: 创建hbase的bin目录
+  file:
+    path: "/home/{{ admin_user }}/server/hbase/{{ item }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+    recurse: yes
+    state: directory
+  with_items:
+    - data/hbase
+    - bin
+
+
+- name: 安装hbase包
+  unarchive:
+    src: "{{ hbase_tarball_name }}"
+    dest: "/home/{{ admin_user }}/server/hbase"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  
+  
+- name: hbase软连接到/home/{{ admin_user }}/server/hbase/hbase
+  file:
+    src: "/home/{{ admin_user }}/server/hbase/{{ hbase_name }}"
+    dest: "/home/{{ admin_user }}/server/hbase/hbase"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    state: link
+    follow: False
+
+- name: 配置hbase服务配置文件及脚本
+  template:
+    src: "hbase/{{ item.key }}"
+    dest: "/home/{{ admin_user }}/server/{{ item.value }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  with_items:
+    - { key: 'hbase-site.xml.j2' , value: 'hbase/hbase/conf/hbase-site.xml' }
+    - { key: 'log4j.properties.j2' , value: 'hbase/hbase/conf/log4j.properties' }
+    - { key: 'hbase-env.sh.j2' , value: 'hbase/hbase/conf/hbase-env.sh' }
+    - { key: 'hbase_dog.sh.j2' , value: 'hbase/bin/hbase_dog.sh' }
+    - { key: 'service.sh.j2' , value: 'hbase/bin/service.sh' }
+    - { key: 'startup_master.sh.j2' , value: 'hbase/bin/startup_master.sh' }
+    - { key: 'startup_regionserver.sh.j2' , value: 'hbase/bin/startup_regionserver.sh' }
+
+- name: 配置HA-hbase服务配置文件及脚本
+  template:
+    src: "{{ item.key }}"
+    dest: "/home/{{ admin_user }}/server/{{ item.value }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  with_items:
+    - { key: 'hadoop/hdfs-site.xml.j2' , value: 'hbase/hbase/conf/hdfs-site.xml' }
+    - { key: 'hbase/regionservers.j2' , value: 'hbase/hbase/conf/regionservers' }
+    - { key: 'hbase/backup-master.j2' , value: 'hbase/hbase/conf/backup-master' }
+  when:
+    - hbase_ha_tag == True
+  
+- name: 调整hbase的目录权限
+  command: "chown -R {{ admin_user }}:{{ admin_user }} /home/{{ admin_user }}/server/hbase/"
+
+- name: ready to notify
+  shell: ls
+  notify:
+    - restart hbase
+
+- name: 提前重启服务
+  meta: flush_handlers

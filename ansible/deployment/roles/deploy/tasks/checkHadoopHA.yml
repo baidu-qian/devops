@@ -1,0 +1,35 @@
+---
+- name: Gather facts
+  setup:
+
+- name: count datanode
+  set_fact:
+    hdfs_tag: True
+  when:
+    -  groups['datanode'] | length  >= 2
+
+- name: debug hdfs_tag 
+  debug:
+    msg: "{{ hdfs_tag }}"
+
+- name: count namenode
+  set_fact:
+    hdfs_ha_tag: True
+  when:
+    -  groups['datanode'] | length  >= 3
+    -  groups['namenode'] | length  >= 2
+
+- name: debug hdfs_ha_tag 
+  debug:
+    msg: "{{ hdfs_ha_tag }}"
+
+- name: count hbase
+  set_fact:
+    hbase_ha_tag: True
+  when:
+    -  groups['datanode'] | length  >= 2
+    -  groups['hbase'] | length  >= 2
+
+- name: debug hbase_ha_tag 
+  debug:
+    msg: "{{ hbase_ha_tag }}"

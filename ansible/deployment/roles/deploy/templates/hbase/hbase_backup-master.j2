@@ -1,0 +1,3 @@
+{% for ip in groups['hbase'][1:] %}
+{{ hostvars[ip]['ansible_hostname'] }}
+{% endfor %}

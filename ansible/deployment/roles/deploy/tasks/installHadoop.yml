@@ -1,0 +1,222 @@
+---
+# - name: 输出users
+#   debug:
+#     msg: "{{ users_output }}"
+
+- name: check users
+  stat: 
+    path: "/home/{{ admin_user }}/app"
+  register: users_output
+
+- import_tasks: createUser.yml
+  when: users_output.stat.exists != True
+
+- import_tasks: checkHadoopHA.yml
+
+- name: 创建hadoop的bin目录
+  file:
+    path: "/home/{{ admin_user }}/server/hadoop/{{ item }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+    recurse: yes
+    state: directory
+  with_items:
+    - data/
+    - bin
+
+- name: 安装hadoop包
+  unarchive:
+    src: "{{ hadoop_tarball_name }}"
+    dest: "/home/{{ admin_user }}/server/hadoop"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+
+- name: hadoop软连接到/home/{{ admin_user }}/server/hadoop/hadoop
+  file:
+    src: "/home/{{ admin_user }}/server/hadoop/{{ hadoop_name }}"
+    dest: "/home/{{ admin_user }}/server/hadoop/hadoop"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    state: link
+    follow: False
+
+- name: 配置hadoop服务配置文件及脚本
+  template:
+    src: "hadoop/{{ item.key }}"
+    dest: "/home/{{ admin_user }}/server/{{ item.value }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  with_items:
+    - { key: 'hdfs-site.xml.j2' , value: 'hadoop/hadoop/etc/hadoop/hdfs-site.xml' }
+    - { key: 'core-site.xml.j2' , value: 'hadoop/hadoop/etc/hadoop/core-site.xml' }
+    - { key: 'mapred-site.xml.j2' , value: 'hadoop/hadoop/etc/hadoop/mapred-site.xml' }
+    - { key: 'hdfs_log4j.properties.j2' , value: 'hadoop/hadoop/etc/hadoop/log4j.properties' }
+    - { key: 'hadoop-env.sh.j2' , value: 'hadoop/hadoop/etc/hadoop/hadoop-env.sh' }
+    - { key: 'yarn-env.sh.j2' , value: 'hadoop/hadoop/etc/hadoop/yarn-env.sh' }
+    - { key: 'hdfs_workers.j2' , value: 'hadoop/hadoop/etc/hadoop/workers' }
+    - { key: 'hadoop_dog.sh.j2' , value: 'hadoop/bin/hadoop_dog.sh' }
+    - { key: 'hadoop_service.sh.j2' , value: 'hadoop/bin/service.sh' }
+
+- name: 配置yarn服务配置文件及脚本
+  template:
+    src: "hadoop/{{ item.key }}"
+    dest: "/home/{{ admin_user }}/server/{{ item.value }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  with_items:
+    - { key: 'yarn-site.xml.j2' , value: 'hadoop/hadoop/etc/hadoop/yarn-site.xml' }
+  when:
+    - hdfs_ha_tag == True
+
+- name: 调整hadoop的目录权限
+  shell: "chown -R {{ admin_user }}:{{ admin_user }} /home/{{ admin_user }}/server/hadoop/{{ hadoop_name }}"
+
+- name: 启动journalnode
+  become_user: "{{ admin_user }}"
+  command: "sudo su - {{ admin_user }} -c 'cd server/hadoop/hadoop/bin ; ./hdfs --daemon start journalnode ; sleep 60'"
+  # ignore_errors: True
+  when:
+    - hdfs_ha_tag == True
+    - inventory_hostname in groups["datanode"][0:3]
+
+- name: 设置journalnode的变量tag
+  ansible.builtin.lineinfile:
+    path: /home/{{ admin_user }}/.bash_profile
+    regexp: '^journalnode_tag='
+    line: "journalnode_tag=True"
+  # limit: "datanode[0:2]"
+  when:
+    - hdfs_ha_tag == True
+    - inventory_hostname in groups["datanode"][0:3]
+
+- name: 创建hadoop的data目录
+  file:
+    path: "/home/{{ admin_user }}/server/hadoop/{{ item }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+    recurse: yes
+    state: directory
+  with_items:
+    - data/namenode
+  when:
+    - inventory_hostname in groups["namenode"][0]
+
+- name: 格式化namenode
+  become_user: "{{ admin_user }}"
+  #shell: "su - {{ admin_user }} -c \"cd /home/{{ admin_user }}/server/hadoop/hadoop/bin/;./hdfs namenode -format\""
+  shell: "sleep 60;cd /home/{{ admin_user }}/server/hadoop/hadoop/bin/;./hdfs namenode -format -force"
+  # limit: "namenode[0]"
+  when:
+    - inventory_hostname in groups["namenode"][0]
+
+- name: 启动namenode第一台主机
+  become_user: "{{ admin_user }}"
+  shell: "cd /home/{{ admin_user }}/server/hadoop/hadoop/sbin/ ; nohup ./hadoop-daemon.sh start namenode"
+  # limit: "namenode[0]"
+  when:
+    - inventory_hostname in groups["namenode"][0]
+
+
+- name: 同步namenode数据到其它节点
+  become_user: "{{ admin_user }}"
+  shell: "cd /home/{{ admin_user }}/server/hadoop/hadoop/bin/ ;  ./hdfs namenode -bootstrapStandby ; cd ../sbin/ ;  ./hadoop-daemon.sh start namenode; sleep 5"
+  # limit: "namenode[1:3]"
+  when:
+    - hdfs_ha_tag == True
+    - inventory_hostname in groups["namenode"][1:4]
+
+- name: 启动备份namenode服务
+  become_user: "{{ admin_user }}"
+  shell: "cd /home/{{ admin_user }}/server/hadoop/hadoop/sbin/ ; nohup ./hadoop-daemon.sh start namenode; sleep 5"
+  # limit: "namenode[1:3]"
+  when:
+    - hdfs_ha_tag == True
+    - inventory_hostname in groups["namenode"][1:4]
+
+- name: 设置namenode的变量tag
+  ansible.builtin.lineinfile:
+    path: /home/{{ admin_user }}/.bash_profile
+    regexp: '^namenode_tag='
+    line: "namenode_tag=True"
+  # limit: "namenode[0:3]"
+  when:
+    - hdfs_ha_tag == True
+    - inventory_hostname in groups["namenode"][0:4]
+  
+- name: 初始化zkfc
+  become_user: "{{ admin_user }}"
+  shell: "cd /home/{{ admin_user }}/server/hadoop/hadoop/bin/ ; nohup ./hdfs zkfc -formatZK  -force"
+  # limit: "namenode[0]"
+  when:
+    - hdfs_ha_tag == True
+    - inventory_hostname in groups["namenode"][0]
+  
+- name: 启动zkfc
+  become_user: "{{ admin_user }}"
+  shell: "cd /home/{{ admin_user }}/server/hadoop/hadoop/sbin/ ; nohup ./hadoop-daemon.sh  start zkfc"
+  # limit: "namenode[0:3]"
+  when:
+    - hdfs_ha_tag == True
+    - inventory_hostname in groups["namenode"][0:4]
+
+- name: 设置zkfc的变量tag
+  ansible.builtin.lineinfile:
+    path: /home/{{ admin_user }}/.bash_profile
+    regexp: '^zkfc_tag='
+    line: "zkfc_tag=True"
+  # limit: "namenode[0:3]"
+  when:
+    - hdfs_ha_tag == True
+    - inventory_hostname in groups["namenode"][0:4]
+
+- name: 启动datanode
+  become_user: "{{ admin_user }}"
+  shell: "cd /home/{{ admin_user }}/server/hadoop/hadoop/sbin/ ;nohup ./hadoop-daemon.sh start datanode"
+
+- name: 设置datanode的变量tag
+  ansible.builtin.lineinfile:
+    path: /home/{{ admin_user }}/.bash_profile
+    regexp: '^datanode_tag='
+    line: "datanode_tag=True"
+  when:
+    - hdfs_ha_tag == True
+
+- name: 启动yarn-active
+  become_user: "{{ admin_user }}"
+  shell: "cd /home/{{ admin_user }}/server/hadoop/hadoop/sbin/ ; nohup ./start-yarn.sh"
+  # limit: "namenode[0]"
+  when:
+    - inventory_hostname in groups["namenode"][0]
+
+- name: 启动yarn-standby
+  become_user: "{{ admin_user }}"
+  shell: "cd /home/{{ admin_user }}/server/hadoop/hadoop/sbin/ ;nohup  ./yarn-daemon.sh start resourcemanager"
+  # limit: "namenode[1:3]"
+  when:
+    - hdfs_ha_tag == True
+    - inventory_hostname in groups["namenode"][1:4]
+  ignore_errors: True
+
+- name: 设置yarn的变量tag
+  ansible.builtin.lineinfile:
+    path: /home/{{ admin_user }}/.bash_profile
+    regexp: '^yarn_tag='
+    line: "yarn_tag=True"
+  # limit: "namenode[0:3]"
+  when:
+    - hdfs_ha_tag == True
+    - inventory_hostname in groups["namenode"][1:4]
+
+- name: 提前重启服务
+  meta: flush_handlers

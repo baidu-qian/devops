@@ -1,0 +1,10 @@
+#!/bin/bash
+
+docker run --init --name=logstash \
+ -v /etc/hosts:/etc/hosts \
+ -v /home/{{ admin_user }}/ops/elk/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml \
+ -v /home/{{ admin_user }}/ops/elk//logstash/pipeline:/usr/share/logstash/pipeline \
+ --env LS_JAVA_OPTS="-Xmx1024m -Xms1024m" \
+ --env TZ=PRC \
+ --network admin_network \
+ --rm docker.elastic.co/logstash/logstash:7.16.2

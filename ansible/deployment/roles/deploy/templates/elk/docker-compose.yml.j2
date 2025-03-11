@@ -1,0 +1,128 @@
+version: '3.7'
+
+services:
+  elasticsearch:
+    # build:
+    #   context: ../elasticsearch/
+    #   args:
+    #     ELK_VERSION: $ELK_VERSION
+    image: docker.elastic.co/elasticsearch/elasticsearch:$ELK_VERSION
+    restart: always
+    volumes:
+      - type: bind
+        source: ../elasticsearch/config/elasticsearch.yml
+        target: /usr/share/elasticsearch/config/elasticsearch.yml
+        read_only: true
+#      - type: volume
+#        source: elasticsearch
+#        target: /usr/share/elasticsearch/data
+      - type: bind
+        source: ../elasticsearch/data
+        target: /usr/share/elasticsearch/data
+      - type: bind
+        source: /usr/share/zoneinfo/Asia/Shanghai
+        target: /etc/localtime
+        read_only: true
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "10m"
+            max-file: "3"
+    ports:
+      - "{{ elk_es_restful_port }}:{{ elasticsearch_master_port }}"
+      - "{{ elk_es_tcp_port }}:{{ elasticsearch_master_tcp_port }}"
+    environment:
+      ES_JAVA_OPTS: "-Xmx512m -Xms512m"
+      #ELASTIC_PASSWORD: elastic
+      # ELASTIC_PASSWORD: changeme
+      ELASTIC_PASSWORD: {{ elk_password }}
+      # Use single node discovery in order to disable production mode and avoid bootstrap checks.
+      # see: https://www.elastic.co/guide/en/elasticsearch/reference/current/bootstrap-checks.html
+      discovery.type: single-node
+    networks:
+      - admin_elk
+
+  logstash:
+    # build:
+    #   context: ../logstash/
+    #   args:
+    #     ELK_VERSION: $ELK_VERSION
+    image: docker.elastic.co/logstash/logstash:$ELK_VERSION
+    restart: always
+    volumes:
+      - type: bind
+        source: ../logstash/config/logstash.yml
+        target: /usr/share/logstash/config/logstash.yml
+        read_only: true
+      - type: bind
+        source: ../logstash/pipeline
+        target: /usr/share/logstash/pipeline
+        read_only: true
+      - type: bind
+        source: /usr/share/zoneinfo/Asia/Shanghai
+        target: /etc/localtime
+        read_only: true
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "10m"
+            max-file: "3"
+    #ports:
+      #- "14100:5044"
+      #- "5044:5044"
+      #- "5000:5000/tcp"
+      #- "5000:5000/udp"
+      #- "9600:9600"
+    extra_hosts:
+      - "vm-10:192.168.1.10"
+      - "vm-11:192.168.1.11"
+    environment:
+      LS_JAVA_OPTS: "-Xmx1024m -Xms1024m"
+    networks:
+      - admin_elk
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    # build:
+    #   context: ../kibana/
+    #   args:
+    #     ELK_VERSION: $ELK_VERSION
+    image: docker.elastic.co/kibana/kibana:$ELK_VERSION
+    restart: always
+    volumes:
+      - type: bind
+        source: ../kibana/config/kibana.yml
+        target: /usr/share/kibana/config/kibana.yml
+        read_only: true
+      - type: bind
+        source: /usr/share/zoneinfo/Asia/Shanghai
+        target: /etc/localtime
+        read_only: true
+    logging:
+        driver: "json-file"
+        options:
+            max-size: "10m"
+            max-file: "3"
+    ports:
+      - "14001:{{ kibana_port }}"
+      #- "{{ kibana_port }}:{{ kibana_port }}"
+    networks:
+      - admin_elk
+    depends_on:
+      - elasticsearch
+
+# networks:
+#     admin_network:
+#         external: true
+
+networks:
+  admin_elk:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      - subnet: 10.230.140.0/24
+
+volumes:
+  elasticsearch:

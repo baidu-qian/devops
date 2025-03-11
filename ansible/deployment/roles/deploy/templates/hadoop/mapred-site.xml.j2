@@ -1,0 +1,39 @@
+<configuration>
+<!--配置mapreduce的框架名称-->
+<property>  
+    <name>mapreduce.framework.name</name>
+    <value>yarn</value>
+    <final>true</final>
+</property>
+
+<!--指定jobhistoryserver的内部通信地址-->
+<property>
+    <name>mapreduce.jobhistory.address</name>
+    <value>{{ hostvars[groups['namenode'][0]]['ansible_hostname'] }}:{{ hdfs_mapreduce_jobhistory_address_port }}</value>
+</property>
+
+<!--指定jobhistoryserver的web地址-->
+<property>
+    <name>mapreduce.jobhistory.webapp.address</name>
+    <value>{{ hostvars[groups['namenode'][0]]['ansible_hostname'] }}:{{ hdfs_mapreduce_jobhistory_webapp_address_port }}</value>
+</property>
+<property>
+    <name>yarn.app.mapreduce.am.env</name>
+    <value>HADOOP_MAPRED_HOME=/home/{{ admin_user }}/server/hadoop/hadoop</value>
+</property>
+
+<property>
+    <name>mapreduce.map.env</name>
+    <value>HADOOP_MAPRED_HOME=/home/{{ admin_user }}/server/hadoop/hadoop</value>
+</property>
+
+<property>
+    <name>mapreduce.reduce.env</name>
+    <value>HADOOP_MAPRED_HOME=/home/{{ admin_user }}/server/hadoop/hadoop</value>
+</property>
+
+<property> 
+    <name>mapreduce.application.classpath</name>
+    <value>$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/*,$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/lib/*</value>
+</property>
+</configuration>

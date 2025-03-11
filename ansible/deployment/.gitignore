@@ -1,0 +1,14 @@
+.DS_Store
+*/.DS_Store
+*.pyc
+*.tar
+*.tar.gz
+*.jar
+*.tgz
+*.so
+*.dex
+*.aar
+*.bk
+*.js
+*.rpm
+*.deb

@@ -1,0 +1,183 @@
+---
+# tags: deploy_redis
+
+- name: check docker.pid
+  stat: 
+    path: "/run/docker.pid"
+  register: dockerpid_output
+  
+- name: check users
+  stat: 
+    path: "/home/{{ admin_user }}/app"
+  register: users_output
+
+# - name: 输出users
+#   debug:
+#     msg: "{{ users_output }}"
+
+- import_tasks: createUser.yml
+  when: users_output.stat.exists != True
+- import_tasks: dockerEnv.yml
+  when: dockerpid_output.stat.exists != True
+
+- name: copy redis
+  copy:
+    src: "server/redis"
+    dest: "/home/{{ admin_user }}/server/"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+
+- name: 创建部署所需要的目录 
+  file:
+    path: "/home/{{ admin_user }}/server/redis/{{ item }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+    recurse: yes
+    state: directory
+  with_items:
+    - bin
+    - config
+    - images
+    - log
+    - data
+    - tmp
+
+- name: 创建redis的log文件
+  command: "touch /home/{{ admin_user }}/server/redis/log/redis.log"
+  ignore_errors: True
+
+- name: load redis image
+  command: "docker load -i /home/{{ admin_user }}/server/redis/images/{{ ansible_architecture|lower }}/redis.tar"
+#   when:
+#     - ansible_os_family|lower != "kylin linux advanced server"
+
+# - name: kylin load redis image
+#   command: "docker load -i /home/{{ admin_user }}/server/redis/images/{{ ansible_architecture|lower }}/redis.tar.bk"
+#   when:
+#     - ansible_os_family|lower == "kylin linux advanced server"
+#     - ansible_architecture|lower == "x86_64"
+#     - ansible_distribution_version|lower == "v10"
+
+- name: 配置redis服务配置文件及脚本
+  template:
+    src: "redis/{{ item.key }}"
+    dest: "/home/{{ admin_user }}/server/redis/{{ item.value }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  with_items:
+    - { key: 'service.sh.j2' , value: 'bin/service.sh' }
+    - { key: 'docker-compose.yml.j2' , value: 'bin/docker-compose.yml' }
+    - { key: 'redis.conf.j2' , value: 'conf/redis.conf' }
+    - { key: 'startup.sh.j2' , value: 'bin/startup.sh' }
+  when: 
+    - ansible_architecture|lower == "x86_64"
+    - groups['redis'] | length  == 1
+
+- name: 配置redis服务配置文件及脚本
+  template:
+    src: "redis/{{ item.key }}"
+    dest: "/home/{{ admin_user }}/server/redis/{{ item.value }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  with_items:
+    - { key: 'service.sh.j2' , value: 'bin/service.sh' }
+    - { key: 'docker-compose_aarch64.yml.j2' , value: 'bin/docker-compose.yml' }
+    - { key: 'redis_aarch64.conf.j2' , value: 'conf/redis.conf' }
+    - { key: 'startup.sh.j2' , value: 'bin/startup.sh' }
+  when: 
+    - ansible_architecture|lower == "aarch64"
+    - groups['redis'] | length  == 1
+
+## cluster集群
+- block: 
+  - name: 配置redis服务配置文件-x86
+    template:
+      src: "redis/{{ item.key }}"
+      dest: "/home/{{ admin_user }}/server/redis/{{ item.value }}"
+      owner: "{{ admin_user }}"
+      group: "{{ admin_user }}"
+      force: yes
+      mode: 0755
+    with_items:
+      - { key: 'service.sh.j2' , value: 'bin/service.sh' }
+      - { key: 'docker-compose.yml.j2' , value: 'bin/docker-compose.yml' }
+      - { key: 'redis-cluster.conf.j2' , value: 'conf/redis.conf' }
+      - { key: 'startup.sh.j2' , value: 'bin/startup.sh' }
+    when: 
+      - ansible_architecture|lower == "x86_64"
+      # - groups['redis'] | length  >= 2
+
+  - name: 配置redis服务配置文件及脚本-aarch64
+    template:
+      src: "redis/{{ item.key }}"
+      dest: "/home/{{ admin_user }}/server/redis/{{ item.value }}"
+      owner: "{{ admin_user }}"
+      group: "{{ admin_user }}"
+      force: yes
+      mode: 0755
+    with_items:
+      - { key: 'service.sh.j2' , value: 'bin/service.sh' }
+      - { key: 'docker-compose_aarch64.yml.j2' , value: 'bin/docker-compose.yml' }
+      - { key: 'redis-cluster_aarch64.conf.j2' , value: 'conf/redis.conf' }
+      - { key: 'startup.sh.j2' , value: 'bin/startup.sh' }
+    when: 
+      - ansible_architecture|lower == "aarch64"
+      # - groups['redis'] | length  >= 2
+
+  - name: 输出redis初始化命令
+    debug:
+      msg:
+        - "i will use this command to init the cluster: "
+        - "docker exec -ti redis redis-cli --cluster create {{ groups['redis'] | map('regex_replace', '^', '') | map('regex_replace', '$', ':' ~ redis_port | string) | join(' ') }} --cluster-replicas 1 -a {{ redis_password }} --cluster-yes"
+    run_once: true
+  when:
+    - groups['redis'] | length  >= 2
+
+- name: list
+  shell: ls
+  notify:
+    - restart redis
+
+- name: 提前重启服务
+  meta: flush_handlers
+
+- block:
+  - name: 初始化Redis集群-1副本
+    become_user: "{{ admin_user }}"
+    shell: "echo -e '#!/bin/bash \n docker exec -ti redis redis-cli --cluster create {{ groups['redis'] | map('regex_replace', '^', '') | map('regex_replace', '$', ':' ~ redis_port | string) | join(' ') }} --cluster-replicas 1 -a {{ redis_password }} --cluster-yes' > /home/{{ admin_user }}/server/redis/bin/redis-cluster-init.sh"
+    run_once: true
+
+  - name: 执行初始化脚本
+    become_user: "{{ admin_user }}"
+    command: "bash /home/{{ admin_user }}/server/redis/bin/redis-cluster-init.sh"
+    run_once: true
+
+  when: 
+    - groups['redis'] | length  >= 6
+    - inventory_hostname in groups["redis"][0]
+
+- block:
+  - name: 初始化Redis集群-0副本
+    become_user: "{{ admin_user }}"
+    shell: "echo -e '#!/bin/bash \n docker exec -ti redis redis-cli --cluster create {{ groups['redis'] | map('regex_replace', '^', '') | map('regex_replace', '$', ':' ~ redis_port | string) | join(' ') }} --cluster-replicas 0 -a {{ redis_password }} --cluster-yes' > /home/{{ admin_user }}/server/redis/bin/redis-cluster-init.sh"
+    run_once: true
+
+  - name: 执行初始化脚本
+    become_user: "{{ admin_user }}"
+    command: "bash /home/{{ admin_user }}/server/redis/bin/redis-cluster-init.sh"
+    run_once: true
+
+  when: 
+    - groups['redis'] | length  < 6
+    - groups['redis'] | length  >= 2
+    - inventory_hostname in groups["redis"][0]
+
+   

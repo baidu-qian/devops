@@ -1,0 +1,35 @@
+version: "3.7"
+
+services:
+  portainer:
+    container_name: portainer
+    image: "{{ harbor_ip }}/admin/portainer/portainer:latest"
+    restart: always
+    privileged: true
+    volumes:
+      - /home/{{ admin_user }}/ops/portainer/data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - '14003:9000'
+    networks:
+        - admin_network
+    # deploy:
+    #   mode: replicated
+    #   replicas: 1
+    #   placement:
+    #     constraints: [node.role == manager]
+
+  agent:
+    image: "{{ harbor_ip }}/admin/portainer/agent:latest"
+    environment:
+        AGENT_CLUSTER_ADDR: tasks.agent
+    volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - /home/{{ admin_user }}/data/docker/volumes:/var/lib/docker/volumes
+    ports:
+        - '14101:9001'
+    networks:
+        - admin_network
+networks:
+  admin_network:
+    external: true

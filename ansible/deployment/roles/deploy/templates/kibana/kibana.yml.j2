@@ -1,0 +1,4 @@
+server.port: {{ kibana_port }}
+server.host: '0.0.0.0'
+elasticsearch.url: 'http://{{ groups['elasticsearchClient'][0] }}:{{ elasticsearch_client_restful_port }}'
+kibana.index: ".kibana"

@@ -1,0 +1,83 @@
+---
+
+- name: check docker.pid
+  stat: 
+    path: "/run/docker.pid"
+  register: dockerpid_output
+  
+- name: check users
+  stat: 
+    path: "/home/{{ admin_user }}/app"
+  register: users_output
+
+# - name: 输出users
+#   debug:
+#     msg: "{{ users_output }}"
+
+- import_tasks: createUser.yml
+  when: users_output.stat.exists != True
+- import_tasks: dockerEnv.yml
+  when: dockerpid_output.stat.exists != True
+
+- name: 创建部署所需要的目录 
+  file:
+    path: "/home/{{ admin_user }}/ops/portainer/{{ item }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+    recurse: yes
+    state: directory
+  with_items:
+    - bin
+    - config
+    - images
+    - log
+    - data
+    - tmp
+
+- name: 传包-portainer
+  copy:
+    src: "{{ portainer_tarball_name}}"
+    dest: "/home/{{ admin_user }}/ops/portainer/images"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+
+- name: 传包-portainer-agent
+  copy:
+    src: "{{ portainerAgent_tarball_name}}"
+    dest: "/home/{{ admin_user }}/ops/portainer/images"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  
+- name: 配置portainer的config文件
+  template:
+    src: "portainer/{{ item.key }}"
+    dest: "/home/{{ admin_user }}/ops/portainer/{{ item.value }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  with_items:
+    - { key: 'service.sh.j2' , value: 'bin/service.sh' }
+    - { key: 'docker-compose.yml.j2' , value: 'bin/docker-compose.yml' }
+    - { key: 'startup_server.sh.j2' , value: 'bin/startup_server.sh' }
+    - { key: 'startup_agent.sh.j2' , value: 'bin/startup_agent.sh' }
+
+- name: 加载images
+  command: "docker load -i /home/{{ admin_user }}/ops/portainer/images/portainer.tar"
+
+- name: 加载images agent
+  command: "docker load -i /home/{{ admin_user }}/ops/portainer/images/portainer-agent.tar"
+
+- name: ready to notify
+  shell: ls
+  notify:
+    - restart portainer
+
+- name: 提前重启服务
+  meta: flush_handlers

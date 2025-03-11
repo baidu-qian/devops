@@ -1,0 +1,9 @@
+---
+- name: start elasticsearchClient
+  shell: "su - {{ admin_user }} -c \" ./server/elasticsearchClient/bin/service start || ./server/elasticsearchClient/bin/service.sh start \" "
+
+- name: stop elasticsearchClient
+  shell: "su - {{ admin_user }} -c \" ./server/elasticsearchClient/bin/service stop || ./server/elasticsearchClient/bin/service.sh stop \" "
+
+- name: restart elasticsearchClient
+  shell: "su - {{ admin_user }} -c \" ./server/elasticsearchClient/bin/service restart || ./server/elasticsearchClient/bin/service.sh restart \" "

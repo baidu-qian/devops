@@ -1,0 +1,83 @@
+[admin-deploy-4.9]
+172.16.43.150
+
+# 支持主备，配置多个ip时，第一个ip为主，其它ip为从
+[postgres]
+172.16.43.150
+
+[zookeeper]
+172.16.43.150
+
+#最多4个,要配置多个datanode才会生效，要求两个以上
+[namenode]
+172.16.43.150
+
+##两个以上datanode才会部署,如果需要HA，则必须大于等于3个
+[datanode]
+172.16.43.150
+
+##部署hdfs才会部署多个，否则部署只会部署第1个
+[hbase]
+172.16.43.150
+
+[kafka]
+172.16.43.150
+
+[elasticsearchMaster]
+172.16.43.150
+
+[elasticsearchClient]
+172.16.43.150
+
+[kibana]
+172.16.43.150
+
+#牵涉过大，只能偶数+4个节点以上，目前只能一个节点
+[minio]
+172.16.43.150
+
+[all:vars]
+ansible_ssh_port = 22 
+ansible_ssh_user = root
+ansible_ssh_pass = 'admin' 
+ansible_su_pass = 'admin' 
+zookeeper_port = 2181
+zookeeper_tcp_port = 2888
+zookeeper_leader_port = 3888
+zookeeper_monitor_port = 9141
+elasticsearch_client_restful_port = 9201
+elasticsearch_client_tcp_port = 9301
+elasticsearch_master_port = 9200
+elasticsearch_master_tcp_port = 9300
+elasticsearch_monitor_port = 9114
+es_cluster_name = 'admin_es'
+kafka_port = 9092
+kafka_monitor_port = 9308
+kibana_port = 5601
+redis_port = 6379
+redis_monitor_port = 9121
+nginx_port = 6279
+nginx_exporter_port = 10081
+nginx_monitor_port = 9913
+postgres_port = 5432
+postgres_monitor_port = 9187
+node_exporter_port = 9100
+process_exporter_port = 9256
+alertmanager_port = 9093
+prometheus_port = 9090
+grafana_port = 14000
+elk_es_restful_port = 9204
+elk_es_tcp_port = 9304
+minio_tcp_port = 9000
+minio_http_port = 9001
+minio_user = admin
+minio_password = admin4
+hdfs_namenode_httpaddress_port = 50070
+hdfs_namenode_secondary_httpaddress_port = 50090
+hdfs_rpc_port = 19000
+hdfs_namenode_shared = 8485
+hdfs_mapreduce_jobhistory_address_port = 10020
+hdfs_mapreduce_jobhistory_webapp_address_port = 19888
+hdfs_yarn_resourcemanager_webapp_address_port = 8088
+harbor_ip=172.16.44.84
+harbor_cache_ip=172.16.44.84

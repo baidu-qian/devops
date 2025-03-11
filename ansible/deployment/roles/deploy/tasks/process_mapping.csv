@@ -1,0 +1,9 @@
+nginx,nginx
+redis,redis
+postgres,postgres
+zookeeper,org.apache.zookeeper.server.quorum.QuorumPeerMain
+hbase,hbase
+kafka,kafka.kafka
+elasticsearchMaster,elasticsearchMaster
+elasticsearchClient,elasticsearchClient
+kibana,kibana

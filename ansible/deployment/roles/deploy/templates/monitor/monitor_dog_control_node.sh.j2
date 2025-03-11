@@ -1,0 +1,40 @@
+#!/bin/bash
+
+PRG=$0
+BASE_PRG=`basename ${PRG}`
+BIN=`cd $(dirname $(readlink -f "$PRG")); pwd`
+HOME=`dirname "$BIN"`
+
+start() {
+    while [ 1 ]
+    do
+        RET=`ps -aux|grep 'prometheus\|alertmanager\|grafana-server\|zookeeper_exporter\|postgres_exporter\|redis_exporter\|elasticsearch_exporter\|nginx-vts-exporter\|node_exporter\|process-exporter\|kafka_exporter'|grep -v grep|wc -l`
+        echo ${RET}
+        if [ ${RET} -lt 11 ]; then
+            /home/{{ admin_user }}/ops/monitor/bin/service.sh start_dog
+            sleep 20
+        fi
+    	sleep 180
+    done >/dev/null 2>&1 &
+}
+
+stop() {
+    echo "stop"
+    for i in `ps -ef|grep "monitor_dog.sh" | grep -v "grep" | awk  '{print $2}'`
+    do
+        sync
+        kill -9 ${i}
+    done
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    *)
+        echo "Usage: { start | stop }"
+        exit 1
+esac

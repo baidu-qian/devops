@@ -1,0 +1,32 @@
+# The number of milliseconds of each tick
+tickTime=2000
+# The number of ticks that the initial 
+# synchronization phase can take
+initLimit=10
+# The number of ticks that can pass between 
+# sending a request and getting an acknowledgement
+syncLimit=5
+# the directory where the snapshot is stored.
+# do not use /tmp for storage, /tmp here is just 
+# example sakes.
+dataDir=/home/{{ admin_user }}/server/zookeeper/zk_data
+# the port at which the clients will connect
+clientPort={{ zookeeper_port }}
+maxClientCnxns=1000
+#
+# Be sure to read the maintenance section of the 
+# administrator guide before turning on autopurge.
+#
+# http://zookeeper.apache.org/doc/current/zookeeperAdmin.html#sc_maintenance
+#
+# The number of snapshots to retain in dataDir
+#autopurge.snapRetainCount=3
+# Purge task interval in hours
+# Set to "0" to disable auto purge feature
+#autopurge.purgeInterval=1
+autopurge.purgeInterval=24
+
+#Service
+{% for ip in groups['zookeeper'] %}
+server.{{ loop.index0 }}={{ ip }}:{{ zookeeper_tcp_port }}:{{ zookeeper_leader_port }}
+{% endfor %}

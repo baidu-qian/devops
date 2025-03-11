@@ -1,0 +1,17 @@
+cluster.name: {{ es_cluster_name }}
+node.name: admin_client_es
+node.attr.rack: admin_client_es
+path.data: /home/{{ admin_user }}/server/elasticsearchClient/data
+path.logs: /home/{{ admin_user }}/server/elasticsearchClient/logs
+bootstrap.memory_lock: true
+network.host: {{ansible_default_ipv4['address']}}
+http.port: {{ elasticsearch_client_restful_port }}
+transport.tcp.port: {{ elasticsearch_client_tcp_port }}
+discovery.zen.ping.unicast.hosts: [{% for i in groups['elasticsearchMaster'] %}"{{ i }}:{{ elasticsearch_master_tcp_port }}" {%- if not loop.last %},{% endif -%} {% endfor %}]
+
+#discovery.zen.ping.unicast.hosts: {{ groups['elasticsearchMaster'] | to_json }}
+discovery.zen.minimum_master_nodes: {{ groups['elasticsearchMaster'] | length  // 2 + 1 }}
+gateway.recover_after_nodes: {{ groups['elasticsearchMaster'] | length  - 1 }}
+action.destructive_requires_name: true
+node.master: false
+node.data: false

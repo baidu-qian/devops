@@ -1,0 +1,53 @@
+#!/bin/bash
+set -o errexit
+set +x
+cd $(dirname "$0")
+
+BB_HOME=$(
+  cd $(dirname "$0")
+  pwd
+)
+
+bb_start() {
+  cd ../node
+  nohup ./node_exporter &
+  cd ../process
+  nohup ./process-exporter -config.path process_name.yml&
+  cd ../bin
+  ./monitor_dog.sh stop > /dev/null 2>&1 &
+  sleep 1
+  ./monitor_dog.sh start > /dev/null 2>&1 &
+  sleep 1
+  echo "start monitor"
+}
+
+bb_start_dog() {
+  cd ../node
+  nohup ./node_exporter &
+  cd ../process
+  nohup ./process-exporter -config.path process_name.yml&
+  echo "start monitor_dog"
+}
+
+bb_stop() {
+  ps -ef|grep node_exporter|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 &
+  ps -ef|grep process-exporter|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 &
+  ps -ef|grep monitor_dog.sh|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 &
+  echo "stop monitor"
+}
+
+case $1 in
+start)
+  bb_start
+  ;;
+start_dog)
+  bb_start_dog
+  ;;
+stop)
+  bb_stop
+  ;;
+*)
+  echo "Usage: { start | start_dog | stop }"
+  exit 1
+  ;;
+esac

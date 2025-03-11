@@ -1,0 +1,38 @@
+#!/bin/bash
+source ~/.bash_profile
+cd $(dirname "$0")
+
+bb_start() {
+  /home/{{ admin_user }}/ops/filebeat/filebeat/filebeat -e -c /home/{{ admin_user }}/ops/filebeat/filebeat/filebeat.yml -d publish --path.data /home/{{ admin_user }}/ops/filebeat/data/ >/dev/null 2>&1 & 
+  sleep 10
+  /home/{{ admin_user }}/ops/filebeat/bin/filebeat_dog.sh start
+}
+bb_stop() {
+  /home/{{ admin_user }}/ops/filebeat/bin/filebeat_dog.sh stop
+  for i in `ps -ef|grep "/home/{{ admin_user }}/ops/filebeat/filebeat/filebeat.yml" | grep -v "grep" | awk  '{print $2}'`
+    do
+        kill -9 ${i}
+    done
+}
+
+bb_restart() {
+  bb_stop
+  sleep 2
+  bb_start
+}
+
+case $1 in
+start)
+  bb_start
+  ;;
+stop)
+  bb_stop
+  ;;
+restart)
+  bb_restart
+  ;;
+*)
+  echo "Usage: { start | stop | restart }"
+  exit 1
+  ;;
+esac

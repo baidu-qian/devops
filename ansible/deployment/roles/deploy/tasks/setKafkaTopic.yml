@@ -1,0 +1,28 @@
+---
+### 设置kafka中topic的分区数为8个
+- name: 设置kafka中topic的分区数为8个，执行脚本为set_kafka_topic.sh
+  template:
+    src: adminUser/set_kafka_topic.sh.j2
+    dest: /home/{{ admin_user }}/bin/set_kafka_topic.sh
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  when: 
+    - inventory_hostname in groups['kafka'][0]
+
+- name: 启动set_kafka_topic.sh脚本
+  become: yes
+  become_user: "{{ admin_user }}"
+  shell: /home/{{ admin_user }}/bin/set_kafka_topic.sh
+  register: shell_result
+  when: 
+    - inventory_hostname in groups['kafka'][0]
+
+- name: Show Shell Command Output
+  debug:
+    var: shell_result.stdout_lines  # 输出命令的标准输出内容
+
+- name: Show Shell Command Error Output
+  debug:
+    var: shell_result.stderr_lines  # 输出命令的标准错误输出内容

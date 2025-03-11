@@ -1,0 +1,15 @@
+---
+- name: deploy
+  gather_facts: false
+  hosts: deploy
+  become: yes
+  become_user: root
+  vars:
+    zookeeper_addr:
+    cdh_tag:
+    distribution_type: none
+    hdfs_ha_tag:  False
+    hdfs_tag: False
+    hbase_ha_tag: False
+  roles:
+    - role: deploy

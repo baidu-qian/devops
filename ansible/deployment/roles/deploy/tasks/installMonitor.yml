@@ -1,0 +1,231 @@
+---
+# tags: install_monitor
+- name: check docker.pid
+  stat: 
+    path: "/run/docker.pid"
+  register: dockerpid_output
+  
+- name: check users
+  stat: 
+    path: "/home/{{ admin_user }}/app"
+  register: users_output
+
+# - name: 输出users
+#   debug:
+#     msg: "{{ users_output }}"
+
+- import_tasks: createUser.yml
+  when: users_output.stat.exists != True
+- import_tasks: dockerEnv.yml
+  when: dockerpid_output.stat.exists != True
+
+- name: confirm monitor dir exists
+  file:
+    path: "/home/{{ admin_user }}/ops/monitor"
+    state: directory
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+
+- name: install monitor component in control node
+  unarchive:
+    src: "ops/monitor/{{ item }}"
+    dest: "/home/{{ admin_user }}/ops/monitor"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+  with_items:
+    - "{{ prometheus_name }}"
+    - "{{ grafana_name }}"
+    - "{{ alertmanager_name }}"
+    - "{{ elasticsearch_exporter }}"
+    - "{{ kafka_exporter }}"
+    - "{{ redis_exporter }}"
+    - "{{ process_exporter }}"
+    - "{{ node_exporter }}"
+    - "{{ nginx_exporter }}"
+    - "{{ postgres_exporter }}"
+    - "{{ zookeeper_exporter }}"
+  when: inventory_hostname == groups['monitor'][0]
+
+- name: create link in control node
+  file:
+    src: "/home/{{ admin_user }}/ops/monitor/{{ item.name }}"
+    dest: "/home/{{ admin_user }}/ops/monitor/{{ item.match }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    state: link
+    follow: False
+  with_items:
+    - { name: "{{ prometheus_dir_name }}", match: "{{ prometheus_link }}" }
+    - { name: "{{ grafana_dir_name }}", match: "{{ grafana_link }}" }
+    - { name: "{{ alertmanager_dir_name }}", match: "{{ alertmanager_link }}" }
+    - { name: "{{ elasticsearch_exporter_dir_name }}", match: "{{ elasticsearch_link }}" }
+    - { name: "{{ kafka_exporter_dir_name }}", match: "{{ kafka_link }}" }
+    - { name: "{{ redis_exporter_dir_name }}", match: "{{ redis_link }}" }
+    - { name: "{{ process_exporter_dir_name }}", match: "{{ process_link }}" }
+    - { name: "{{ node_exporter_dir_name }}", match: "{{ node_link }}" }
+    - { name: "{{ nginx_exporter_dir_name }}", match: "{{ nginx_link }}" }
+    - { name: "{{ postgres_exporter_dir_name }}", match: "{{ postgres_link }}" }
+    - { name: "{{ zookeeper_exporter_dir_name }}", match: "{{ zookeeper_link }}" }
+  when: inventory_hostname == groups['monitor'][0]
+
+- name: install monitor component in other node
+  unarchive:
+    src: "ops/monitor/{{ item }}"
+    dest: "/home/{{ admin_user }}/ops/monitor"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+  with_items:
+    - "{{ process_exporter }}"
+    - "{{ node_exporter }}"
+  when: inventory_hostname != groups['monitor'][0]
+
+- name: create link in other node
+  file:
+    src: "/home/{{ admin_user }}/ops/monitor/{{ item.name }}"
+    dest: "/home/{{ admin_user }}/ops/monitor/{{ item.match }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    state: link
+    follow: False
+  with_items:
+    - { name: "{{ process_exporter_dir_name }}", match: "{{ process_link }}" }
+    - { name: "{{ node_exporter_dir_name }}", match: "{{ node_link }}" }
+  when: inventory_hostname != groups['monitor'][0]
+
+- name: create rules & template dir & other dir
+  file:
+    path: "/home/{{ admin_user }}/ops/monitor/{{ item }}"
+    state: directory
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+  with_items:
+    - "rules"
+    - "template"
+    - "ssl"
+    - "bin"
+  when: inventory_hostname == groups['monitor'][0]
+
+- name: create rules & template dir & other dir
+  file:
+    path: "/home/{{ admin_user }}/ops/monitor/{{ item }}"
+    state: directory
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+  with_items:
+    - "bin"
+  when: inventory_hostname != groups['monitor'][0]
+
+- name: set several host IP
+  set_fact:
+    prometheus_host: "{{ groups['monitor'][0] }}"
+    redis_host: "{{ groups['redis'][0] }}"
+    kafka_host: "{{ groups['kafka'][0] }}"
+    elasticsearch_host: "{{ groups['elasticsearchClient'][0] }}"
+    nginx_host: "{{ groups['nginx'][0] }}"
+    postgres_host: "{{ groups['postgres'][0] }}"
+    zookeeper_host: "{{ groups['zookeeper'][0] }}"
+    webService_host: "{{ groups['web-service'][0] }}"
+  when: inventory_hostname == groups['monitor'][0]
+
+- name: move server.key file
+  template: dest=/home/{{ admin_user }}/ops/monitor/ssl/server.key src=monitor/server.key.j2 owner={{ admin_user }} group={{ admin_user }}
+  when: inventory_hostname == groups['monitor'][0]
+
+- name: move server.crt file
+  template: dest=/home/{{ admin_user }}/ops/monitor/ssl/server.crt src=monitor/server.crt.j2 owner={{ admin_user }} group={{ admin_user }}
+  when: inventory_hostname == groups['monitor'][0]
+
+- name: move prometheus.yml file
+  template: dest=/home/{{ admin_user }}/ops/monitor/{{ prometheus_dir_name }}/prometheus.yml src=monitor/prometheus.yml.j2 owner={{ admin_user }} group={{ admin_user }}
+  when: inventory_hostname == groups['monitor'][0]
+
+- name: move grafana.ini file
+  template: dest=/home/{{ admin_user }}/ops/monitor/{{ grafana_dir_name }}/conf/grafana.ini src=monitor/grafana.ini.j2 owner={{ admin_user }} group={{ admin_user }}
+  when: inventory_hostname == groups['monitor'][0]
+
+- name: move alertmanager.yml file
+  template: dest=/home/{{ admin_user }}/ops/monitor/{{ alertmanager_dir_name }}/alertmanager.yml src=monitor/alertmanager.yml.j2 owner={{ admin_user }} group={{ admin_user }}
+  when: inventory_hostname == groups['monitor'][0]
+
+- name: add node exporter line in prometheus.yml
+  lineinfile:
+    dest: /home/{{ admin_user }}/ops/monitor/{{prometheus_dir_name}}/prometheus.yml
+    insertafter: ':{{ node_exporter_port }}'
+    line: "      - targets: ['{{ item }}:{{ node_exporter_port }}']"
+  with_inventory_hostnames:
+    - "{{ role_name }}"
+  when: inventory_hostname == groups['monitor'][0]
+
+- name: add process exporter line in prometheus.yml
+  lineinfile:
+    dest: /home/{{ admin_user }}/ops/monitor/{{prometheus_dir_name}}/prometheus.yml
+    insertafter: ':{{ process_exporter_port }}'
+    line: "      - targets: ['{{ item }}:{{ process_exporter_port }}']"
+  with_inventory_hostnames:
+    - "{{ role_name }}"
+  when: inventory_hostname == groups['monitor'][0]
+
+- name: set group var
+  set_fact:
+    grouplist: "{{ group_names }}"
+
+- name: setup a new list
+  set_fact:
+    mappinglist: []
+
+- name: lookup
+  set_fact: 
+    mappinglist: "{{ mappinglist }} + ['{{ lookup('csvfile',item +' file=process_mapping.csv delimiter=, col=1') }}']"
+  with_items: "{{ grouplist }}"
+
+- name: insert string in file
+  template: dest=/home/{{ admin_user }}/ops/monitor/.mapping.tmp src=monitor/mapping.tmp.j2 owner={{ admin_user }} group={{ admin_user }}
+
+- name: sed to delete []
+  command: sed -i "/^\[\]/d" /home/{{ admin_user }}/ops/monitor/.mapping.tmp
+
+- name: read file
+  command: cat /home/{{ admin_user }}/ops/monitor/.mapping.tmp
+  register: readfile
+
+- debug: var=readfile.stdout_lines
+
+- name: set fact
+  set_fact:
+    mappinglist: "{{ readfile.stdout_lines }}"
+
+- debug: var=mappinglist
+
+- name: copy template
+  template: dest=/home/{{ admin_user }}/ops/monitor/{{ process_exporter_dir_name }}/process_name.yml src=monitor/process_name.yml.j2 owner={{ admin_user }} group={{ admin_user }}
+
+- name: copy monitor_dog.sh in control node
+  template: dest=/home/{{ admin_user }}/ops/monitor/bin/monitor_dog.sh src=monitor/monitor_dog_control_node.sh.j2 owner={{ admin_user }} group={{ admin_user }} mode=755
+  when: inventory_hostname == groups['monitor'][0]
+
+- name: 修改文件权限
+  file:
+    path: "/home/{{ admin_user }}/ops/monitor"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    recurse: yes
+
+- name: copy service.sh in control node
+  template: dest=/home/{{ admin_user }}/ops/monitor/bin/service.sh src=monitor/service_control_node.sh.j2 owner={{ admin_user }} group={{ admin_user }} mode=755
+  notify:
+    - start monitor
+  when: inventory_hostname == groups['monitor'][0]
+
+- meta: flush_handlers
+
+- name: copy monitor_dog.sh in other node
+  template: dest=/home/{{ admin_user }}/ops/monitor/bin/monitor_dog.sh src=monitor/monitor_dog_other_node.sh.j2 owner={{ admin_user }} group={{ admin_user }} mode=755
+  when: inventory_hostname != groups['monitor'][0]
+
+- name: copy service.sh in other node
+  template: dest=/home/{{ admin_user }}/ops/monitor/bin/service.sh src=monitor/service_other_node.sh.j2 owner={{ admin_user }} group={{ admin_user }} mode=755
+  notify:
+    - start monitor
+  when: inventory_hostname != groups['monitor'][0]
+
+- meta: flush_handlers

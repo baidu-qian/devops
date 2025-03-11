@@ -1,0 +1,10 @@
+#!/bin/bash
+NUM=$(docker network ls|grep "admin_network"|wc -l)
+while [ "${NUM}" != "1" ]
+do
+  echo ${NUM}
+  #docker network create --driver bridge  admin_network --subnet 10.232.0.0/16
+  docker network create --driver bridge --subnet 10.232.0.0/16 --gateway 10.232.0.1 --ipv6 --subnet 2001:db81:1::/64  --gateway  2001:db81:1::1 admin_network
+  NUM=$(docker network ls|grep "admin_network"|wc -l)
+  sleep 10
+done

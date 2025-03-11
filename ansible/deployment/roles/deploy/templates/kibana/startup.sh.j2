@@ -1,0 +1,4 @@
+#!/bin/bash
+curl -XPUT -H 'Content-Type: application/json' "http://{{ groups['elasticsearchClient'][0] }}:{{ elasticsearch_client_restful_port }}/_all/_settings" -d '{"index.number_of_replicas" : "0"}'
+/home/{{ admin_user }}/server/kibana/bin/kibana
+

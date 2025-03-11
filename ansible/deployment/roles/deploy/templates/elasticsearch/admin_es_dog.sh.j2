@@ -1,0 +1,63 @@
+#!/bin/bash
+
+PRG=$0
+BASE_PRG=`readlink -f ${PRG}`
+PID_NAME=$2
+SER_NAME=$3
+
+start() {
+    while [ 1 ]
+    do
+        RET=`ps aux|grep "${PID_NAME}"| grep -v grep|grep -v ${BASE_PRG} |wc -l`
+        echo ${RET}
+        if [ "${RET}" == "0" ]; then
+            bash ${SER_NAME} dog_start
+    	    sleep 180
+        fi
+    	    sleep 180
+    done >/dev/null 2>&1 &
+}
+
+stop() {
+    echo "stop"
+    for i in `ps -ef|grep "${BASE_PRG} start" | grep -v "grep" | awk  '{print $2}'`
+    do
+        sync
+        kill -9 ${i}
+    done
+}
+
+reload() {
+    echo "reload"
+}
+
+restart() {
+    stop
+    sleep 30
+    start
+}
+
+status() {
+    echo "status"
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    reload)
+        reload
+        ;;
+    restart)
+        restart
+        ;;
+    status)
+        status
+        ;;
+    *)
+        echo "Usage: { start | stop | reload | restart | status | test }"
+        exit 1
+esac

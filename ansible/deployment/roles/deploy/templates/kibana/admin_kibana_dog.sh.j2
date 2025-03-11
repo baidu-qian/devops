@@ -1,0 +1,57 @@
+#!/bin/bash
+
+start() {
+    while [ 1 ]
+    do
+        RET=`ps -ef|grep "/node/bin/node"| grep -v grep|wc -l`
+        if [ "${RET}" == "0" ]; then
+            bash /home/{{ admin_user }}/server/kibana/bin/service.sh dog_start
+    	    sleep 180
+        fi
+    	    sleep 180
+    done >/dev/null 2>&1 &
+}
+
+stop() {
+    echo "stop"
+    for i in `ps -ef|grep "admin_kibana_dog.sh" | grep -v "grep" | awk  '{print $2}'`
+    do
+        sync
+        kill -9 ${i}
+    done
+}
+
+reload() {
+    echo "reload"
+}
+
+restart() {
+    stop
+    sleep 30
+    start
+}
+
+status() {
+    echo "status"
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    reload)
+        reload
+        ;;
+    restart)
+        restart
+        ;;
+    status)
+        status
+        ;;
+    *)
+        echo "Usage: { start | stop | reload | restart | status | test }"
+        exit 1
+esac

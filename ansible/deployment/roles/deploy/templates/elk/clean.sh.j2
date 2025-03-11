@@ -1,0 +1,40 @@
+#!/bin/bash
+#searchIndex=' .monitoring-'
+expire_day=30
+
+date2stamp () {
+    date --utc --date "$1" +%s
+}
+
+dateDiff (){
+    case $1 in
+        -s)   sec=1;      shift;;
+        -m)   sec=60;     shift;;
+        -h)   sec=3600;   shift;;
+        -d)   sec=86400;  shift;;
+        *)    sec=86400;;
+    esac
+    dte1=$(date2stamp $1)
+    dte2=$(date2stamp $2)
+    diffSec=$((dte2-dte1))
+    if ((diffSec < 0)); then abs=-1; else abs=1; fi
+    echo $((diffSec/sec*abs))
+}
+
+#for index in $(curl --user elastic:changeme "localhost:{{ elk_es_restful_port }}/_cat/indices?v" | grep "\-20" | awk '{   print $3 }'); do
+for index in $(curl --user {{ elk_user }}:{{ elk_password }} "localhost:{{ elk_es_restful_port }}/_cat/indices?v" | grep "\-20" | awk '{   print $3 }'); do
+  mdate=`echo ${index: -10} | sed "s/\.//g"`
+  #echo "mdate "$mdate
+  cond=$(date +%Y%m%d)
+  #echo "cond "$cond
+  diff=$(dateDiff -d $mdate $cond)
+  #echo "${index} (${diff})"
+  if [ $diff -gt ${expire_day} ]; then
+    echo " / DELETE "${index}
+    # curl --user elastic:changeme -XDELETE "localhost:{{ elk_es_restful_port }}/${index}?pretty"
+    curl --user {{ elk_user }}:{{ elk_password }} -XDELETE "localhost:{{ elk_es_restful_port }}/${index}?pretty"
+  fi
+  # curl --user elastic:changeme -XPOST  "localhost:{{ elk_es_restful_port }}/_license/start_basic?acknowledge=true"
+  curl --user {{ elk_user }}:{{ elk_password }} -XPOST  "localhost:{{ elk_es_restful_port }}/_license/start_basic?acknowledge=true"
+done
+

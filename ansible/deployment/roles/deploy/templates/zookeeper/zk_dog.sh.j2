@@ -1,0 +1,63 @@
+#!/bin/bash
+
+PRG=$0
+BASE_PRG=`basename ${PRG}`
+BIN=`cd $(dirname $(readlink -f "$PRG")); pwd`
+HOME=`dirname "$BIN"`
+
+start() {
+    while [ 1 ]
+    do
+        RET=`ps aux|grep "/home/{{ admin_user }}/server/zookeeper"|grep "zookeeper"| grep -v "grep"| grep -v "zk_dog" |wc -l`
+        # echo ${RET}
+        if [ ${RET} -ne 1 ]; then
+            /home/{{ admin_user }}/server/zookeeper/zookeeper/bin/zkServer.sh start /home/{{ admin_user }}/server/zookeeper/zookeeper/conf/zoo.cfg
+            sleep 20
+        fi
+    	sleep 180
+    done >/dev/null 2>&1 &
+}
+
+stop() {
+    echo "stop"
+    for i in `ps -ef|grep "zk_dog.sh" | grep -v "grep" | awk  '{print $2}'`
+    do
+        sync
+        kill -9 ${i}
+    done
+}
+
+reload() {
+    echo "reload"
+}
+
+restart() {
+    stop
+    sleep 30
+    start
+}
+
+status() {
+    echo "status"
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    reload)
+        reload
+        ;;
+    restart)
+        restart
+        ;;
+    status)
+        status
+        ;;
+    *)
+        echo "Usage: { start | stop | reload | restart | status | test }"
+        exit 1
+esac

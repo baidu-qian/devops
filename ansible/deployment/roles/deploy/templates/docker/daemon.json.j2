@@ -1,0 +1,31 @@
+{
+    "bip": "10.230.199.1/24",
+    "ipv6": true,
+    "data-root": "/home/{{ admin_user }}/data/docker-data",
+    "exec-opts": ["native.cgroupdriver=systemd"],
+    "storage-driver": "overlay2",
+    "max-concurrent-downloads": 10,
+    "live-restore": true,
+    "log-driver": "json-file",
+    "log-level": "warn",
+    "log-opts": {
+      "max-size": "50m",
+      "max-file": "2"
+     },
+    "default-ulimits": {
+      "nofile": {
+        "Hard": 64000,
+        "Name": "nofile",
+        "Soft": 64000
+      }
+    },
+    "fixed-cidr-v6": "2001:db8:1::/64",
+    "registry-mirrors": ["http://{{ harbor_ip }}"],
+    "insecure-registries": ["http://{{ harbor_ip }}"],
+    "default-address-pools": [
+      {
+        "base": "172.250.0.1/16",
+        "size": 24
+      }
+    ]
+}

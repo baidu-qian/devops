@@ -1,0 +1,106 @@
+#!/bin/bash
+source ~/.bash_profile
+PRG=$0
+BASE_PRG=`basename ${PRG}`
+BIN=`cd $(dirname $(readlink -f "$PRG")); pwd`
+HOME=`dirname "$BIN"`
+
+start() {
+    while [ 1 ]
+    do
+        if [ "${journalnode_tag}" == "True" ]; then
+            echo "检测journalnode服务中..."
+            jps | grep JournalNode
+            if [ "$?" != "0" ]; then
+              cd /home/{{ admin_user }}/server/hadoop/hadoop/sbin
+              ./hadoop-daemon.sh start journalnode
+              cd -
+            fi
+        fi
+        sleep 5
+        if [ "${namenode_tag} == "True" ]; then
+            echo "检测namenode服务中..."
+            jps | grep NameNode
+            if [ "$?" != "0" ]; then
+              cd /home/{{ admin_user }}/server/hadoop/hadoop/sbin
+              ./hadoop-daemon.sh start namenode
+              cd -
+            fi
+        fi
+        sleep 5
+        if [ "${zkfc_tag} == "True" ]; then
+            echo "检测zkfc服务中..."
+            jps | grep DFSZKFailoverController
+            if [ "$?" != "0" ]; then
+              cd /home/{{ admin_user }}/server/hadoop/hadoop/sbin
+              ./hadoop-daemon.sh start zkfc
+              cd -
+            fi
+        fi
+        sleep 5
+        if [ "${datanode_tag} == "True" ]; then
+            echo "检测datanode服务中..."
+            jps | grep DataNode
+            if [ "$?" != "0" ]; then
+              cd /home/{{ admin_user }}/server/hadoop/hadoop/sbin
+              ./hadoop-daemon.sh start datanode
+              cd -
+            fi
+        fi
+        sleep 5
+        if [ "${yarn_tag} == "True" ]; then
+            echo "检测yarn服务中..."
+            jps | grep ResourceManager
+            if [ "$?" != "0" ]; then
+              cd /home/{{ admin_user }}/server/hadoop/hadoop/sbin
+              ./yarn-daemon.sh start resourcemanager
+              cd -
+            fi
+        fi
+    	sleep 180
+    done >/dev/null 2>&1 &
+}
+
+stop() {
+    echo "stop"
+    for i in `ps -ef|grep "hadoop_dog.sh" | grep -v "grep" | awk  '{print $2}'`
+    do
+        sync
+        kill -9 ${i}
+    done
+}
+
+reload() {
+    echo "reload"
+}
+
+restart() {
+    stop
+    sleep 5
+    start
+}
+
+status() {
+    echo "status"
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    reload)
+        reload
+        ;;
+    restart)
+        restart
+        ;;
+    status)
+        status
+        ;;
+    *)
+        echo "Usage: { start | stop | reload | restart | status | test }"
+        exit 1
+esac

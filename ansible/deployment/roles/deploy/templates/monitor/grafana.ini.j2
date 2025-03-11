@@ -1,0 +1,473 @@
+;app_mode = production
+
+;instance_name = ${HOSTNAME}
+
+[paths]
+;data = /var/lib/grafana
+
+;temp_data_lifetime = 24h
+
+;logs = /var/log/grafana
+
+;plugins = /var/lib/grafana/plugins
+
+;provisioning = conf/provisioning
+
+[server]
+protocol = https
+
+;http_addr =
+
+http_port = {{ grafana_port }}
+
+;domain = localhost
+
+;enforce_domain = false
+
+;root_url = %(protocol)s://%(domain)s:%(http_port)s/
+
+;serve_from_sub_path = false
+
+;router_logging = false
+
+;static_root_path = public
+
+;enable_gzip = false
+
+cert_file = /home/{{ admin_user }}/ops/monitor/ssl/server.crt
+cert_key = /home/{{ admin_user }}/ops/monitor/ssl/server.key
+
+;socket =
+
+[database]
+
+;type = sqlite3
+;host = 127.0.0.1:3306
+;name = grafana
+;user = root
+;password =
+
+;url =
+
+;ssl_mode = disable
+
+;ca_cert_path =
+;client_key_path =
+;client_cert_path =
+;server_cert_name =
+
+;path = grafana.db
+
+;max_idle_conn = 2
+
+;max_open_conn =
+
+;conn_max_lifetime = 14400
+
+;log_queries =
+
+;cache_mode = private
+
+[remote_cache]
+;type = database
+
+;connstr =
+
+[dataproxy]
+
+;logging = false
+
+;timeout = 30
+
+;send_user_header = false
+
+[analytics]
+;reporting_enabled = true
+
+;check_for_updates = true
+
+;google_analytics_ua_id =
+
+;google_tag_manager_id =
+
+[security]
+;disable_initial_admin_creation = false
+
+admin_user = admin
+
+admin_password = admin
+
+;secret_key = SW2YcwTIb9zpOOhoPsMm
+
+;disable_gravatar = false
+
+;data_source_proxy_whitelist =
+
+;disable_brute_force_login_protection = false
+
+;cookie_secure = false
+
+;cookie_samesite = lax
+
+;allow_embedding = false
+
+;strict_transport_security = false
+
+;strict_transport_security_max_age_seconds = 86400
+
+;strict_transport_security_preload = false
+
+;strict_transport_security_subdomains = false
+
+;x_content_type_options = false
+
+;x_xss_protection = false
+
+[snapshots]
+;external_enabled = true
+;external_snapshot_url = https://snapshots-origin.raintank.io
+;external_snapshot_name = Publish to snapshot.raintank.io
+
+;public_mode = false
+
+;snapshot_remove_expired = true
+
+[dashboards]
+;versions_to_keep = 20
+
+[users]
+;allow_sign_up = true
+
+;allow_org_create = true
+
+;auto_assign_org = true
+
+;auto_assign_org_id = 1
+
+;auto_assign_org_role = Viewer
+
+;verify_email_enabled = false
+
+;login_hint = email or username
+;password_hint = password
+
+;default_theme = dark
+
+;external_manage_link_url =
+;external_manage_link_name =
+;external_manage_info =
+
+;viewers_can_edit = false
+
+;editors_can_admin = false
+
+[auth]
+;login_cookie_name = grafana_session
+
+;login_maximum_inactive_lifetime_days = 7
+
+;login_maximum_lifetime_days = 30
+
+;token_rotation_interval_minutes = 10
+
+;disable_login_form = false
+
+;disable_signout_menu = false
+
+;signout_redirect_url =
+
+;oauth_auto_login = false
+
+;api_key_max_seconds_to_live = -1
+
+[auth.anonymous]
+;enabled = false
+
+;org_name = Main Org.
+
+;org_role = Viewer
+
+[auth.github]
+;enabled = false
+;allow_sign_up = true
+;client_id = some_id
+;client_secret = some_secret
+;scopes = user:email,read:org
+;auth_url = https://github.com/login/oauth/authorize
+;token_url = https://github.com/login/oauth/access_token
+;api_url = https://api.github.com/user
+;allowed_domains =
+;team_ids =
+;allowed_organizations =
+
+[auth.gitlab]
+;enabled = false
+;allow_sign_up = true
+;client_id = some_id
+;client_secret = some_secret
+;scopes = api
+;auth_url = https://gitlab.com/oauth/authorize
+;token_url = https://gitlab.com/oauth/token
+;api_url = https://gitlab.com/api/v4
+;allowed_domains =
+;allowed_groups =
+
+[auth.google]
+;enabled = false
+;allow_sign_up = true
+;client_id = some_client_id
+;client_secret = some_client_secret
+;scopes = https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email
+;auth_url = https://accounts.google.com/o/oauth2/auth
+;token_url = https://accounts.google.com/o/oauth2/token
+;api_url = https://www.googleapis.com/oauth2/v1/userinfo
+;allowed_domains =
+;hosted_domain =
+
+[auth.grafana_com]
+;enabled = false
+;allow_sign_up = true
+;client_id = some_id
+;client_secret = some_secret
+;scopes = user:email
+;allowed_organizations =
+
+[auth.generic_oauth]
+;enabled = false
+;name = OAuth
+;allow_sign_up = true
+;client_id = some_id
+;client_secret = some_secret
+;scopes = user:email,read:org
+;email_attribute_name = email:primary
+;email_attribute_path =
+;auth_url = https://foo.bar/login/oauth/authorize
+;token_url = https://foo.bar/login/oauth/access_token
+;api_url = https://foo.bar/user
+;allowed_domains =
+;team_ids =
+;allowed_organizations =
+;role_attribute_path =
+;tls_skip_verify_insecure = false
+;tls_client_cert =
+;tls_client_key =
+;tls_client_ca =
+
+[auth.saml] # Enterprise only
+;enabled = false
+
+;certificate =
+
+;certificate_path =
+
+;private_key =
+
+;# Path to the private key. Used to decrypt assertions from the IdP
+;private_key_path =
+
+;idp_metadata =
+
+;idp_metadata_path =
+
+;idp_metadata_url =
+
+;max_issue_delay = 90s
+
+;metadata_valid_duration = 48h
+
+;assertion_attribute_name = displayName
+
+;assertion_attribute_login = mail
+
+;assertion_attribute_email = mail
+
+[auth.basic]
+;enabled = true
+
+[auth.proxy]
+;enabled = false
+;header_name = X-WEBAUTH-USER
+;header_property = username
+;auto_sign_up = true
+;sync_ttl = 60
+;whitelist = 192.168.1.1, 192.168.2.1
+;headers = Email:X-User-Email, Name:X-User-Name
+;enable_login_token = false
+
+[auth.ldap]
+;enabled = false
+;config_file = /etc/grafana/ldap.toml
+;allow_sign_up = true
+
+;sync_cron = "0 0 1 * * *"
+;active_sync_enabled = true
+
+[smtp]
+;enabled = false
+;host = localhost:25
+;user =
+;password =
+;cert_file =
+;key_file =
+;skip_verify = false
+;from_address = admin@grafana.localhost
+;from_name = Grafana
+;ehlo_identity = dashboard.example.com
+
+[emails]
+;welcome_email_on_sign_up = false
+;templates_pattern = emails/*.html
+
+[log]
+;mode = console file
+
+;level = info
+
+;filters =
+
+[log.console]
+;level =
+
+;format = console
+
+[log.file]
+;level =
+
+;format = text
+
+;log_rotate = true
+
+;max_lines = 1000000
+
+;max_size_shift = 28
+
+;daily_rotate = true
+
+;max_days = 7
+
+[log.syslog]
+;level =
+
+;format = text
+
+;network =
+;address =
+
+;facility =
+
+;tag =
+
+[quota]
+; enabled = false
+
+; org_user = 10
+
+; org_dashboard = 100
+
+; org_data_source = 10
+
+; org_api_key = 10
+
+; user_org = 10
+
+; global_user = -1
+
+; global_org = -1
+
+; global_dashboard = -1
+
+; global_api_key = -1
+
+; global_session = -1
+
+[alerting]
+;enabled = true
+;execute_alerts = true
+
+;error_or_timeout = alerting
+
+;nodata_or_nullvalues = no_data
+
+;concurrent_render_limit = 5
+
+
+;evaluation_timeout_seconds = 30
+
+;notification_timeout_seconds = 30
+
+;max_attempts = 3
+
+;min_interval_seconds = 1
+
+[explore]
+;enabled = true
+
+[metrics]
+;enabled           = true
+;interval_seconds  = 10
+;disable_total_stats = false
+
+; basic_auth_username =
+; basic_auth_password =
+
+[metrics.graphite]
+;address =
+;prefix = prod.grafana.%(instance_name)s.
+
+[grafana_com]
+;url = https://grafana.com
+
+[tracing.jaeger]
+;address = localhost:6831
+;always_included_tag = tag1:value1
+;sampler_type = const
+;sampler_param = 1
+;zipkin_propagation = false
+;disable_shared_zipkin_spans = false
+
+[external_image_storage]
+;provider =
+
+[external_image_storage.s3]
+;endpoint =
+;path_style_access =
+;bucket =
+;region =
+;path =
+;access_key =
+;secret_key =
+
+[external_image_storage.webdav]
+;url =
+;public_url =
+;username =
+;password =
+
+[external_image_storage.gcs]
+;key_file =
+;bucket =
+;path =
+
+[external_image_storage.azure_blob]
+;account_name =
+;account_key =
+;container_name =
+
+[external_image_storage.local]
+
+[rendering]
+;server_url =
+;callback_url =
+
+[panels]
+;disable_sanitize_html = false
+
+[plugins]
+;enable_alpha = false
+;app_tls_skip_verify_insecure = false
+
+[enterprise]
+;license_path =
+
+[feature_toggles]
+;enable =

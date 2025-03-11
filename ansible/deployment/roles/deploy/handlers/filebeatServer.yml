@@ -1,0 +1,9 @@
+---
+- name: start filebeat
+  shell: "su - {{ admin_user }} -c \"~/ops/filebeat/bin/service.sh start\""
+
+- name: stop filebeat
+  shell: "su - {{ admin_user }} -c \"~/ops/filebeat/bin/service.sh stop\""
+
+- name: restart filebeat
+  shell: "su - {{ admin_user }} -c \"~/ops/filebeat/bin/service.sh restart\""

@@ -1,0 +1,32 @@
+#!/bin/bash
+source ~/.bash_profile
+cd $(dirname "$0")
+
+bb_start() {
+  docker-compose -f /home/{{ admin_user }}/server/postgres/bin/docker-compose.yml up -d
+}
+bb_stop() {
+  docker-compose -f /home/{{ admin_user }}/server/postgres/bin/docker-compose.yml down
+}
+
+bb_restart() {
+  bb_stop
+  sleep 2
+  bb_start
+}
+
+case $1 in
+start)
+  bb_start
+  ;;
+stop)
+  bb_stop
+  ;;
+restart)
+  bb_restart
+  ;;
+*)
+  echo "Usage: { start | stop | restart }"
+  exit 1
+  ;;
+esac

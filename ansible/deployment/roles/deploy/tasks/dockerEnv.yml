@@ -1,0 +1,149 @@
+---
+# tags: deploy_docker
+
+- name: check docker-compose
+  stat: 
+    path: "/home/{{ admin_user }}/bin/docker-compose"
+  register: docker_compose_output
+
+- name: 输出docker-compose
+  debug:
+    msg: "{{ docker_compose_output }}"
+
+- name: copy docker-compose
+  copy:
+    src: "bin/docker-compose/{{ ansible_architecture|lower }}/docker-compose"
+    dest: "/home/{{ admin_user }}/bin/docker-compose"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    mode: 0755
+  when: docker_compose_output.stat.exists == False
+
+- name: check docker
+  stat: 
+    path: "/usr/bin/docker"
+  register: docker_output
+
+- name: 安装docker-25
+  unarchive:
+    src: "tools/docker/{{ ansible_architecture|lower }}/{{ docker_package }}"
+    dest: "/home/{{ admin_user }}/tools"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+  when:
+    - docker_output.stat.exists == False
+    - ansible_os_family|lower != "kylin linux advanced server"
+    - ansible_distribution_version|lower != "v10"
+
+- name: 安装docker-25(kylin-v10 arm)
+  unarchive:
+    src: "tools/docker/{{ ansible_architecture|lower }}/{{ docker_package }}"
+    dest: "/home/{{ admin_user }}/tools"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+  when:
+    - docker_output.stat.exists == False
+    - ansible_os_family|lower != "kylin linux advanced server"
+    - ansible_architecture|lower == "aarch64"
+    - ansible_distribution_version|lower != "v10"
+
+- name: 安装docker-19(kylin-v10 x86)
+  unarchive:
+    src: "tools/docker/{{ ansible_architecture|lower }}/docker-19.03.15.tgz"
+    dest: "/home/{{ admin_user }}/tools"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+  when:
+    - docker_output.stat.exists == False
+    - ansible_os_family|lower == "kylin linux advanced server"
+    - ansible_architecture|lower == "x86_64"
+    - ansible_distribution_version|lower == "v10"
+
+- name: copy docker
+  shell: cp -fa /home/{{ admin_user }}/tools/docker/* /usr/bin/
+  when: docker_output.stat.exists == False
+
+- name: 统计docker进程
+  # shell: ps -ef | grep '/usr/bin/dockerd' |wc -l
+  command: "systemctl status docker"
+  register: check_value
+  ignore_errors: True
+
+# - name: 输出docker服务状态
+#   debug:
+#     msg: "{{ check_value }}"
+
+- name: 提前删除docker服务
+  file:
+    path: /etc/systemd/system/docker.service
+    force: yes
+    state: absent
+  when: "'running' not in check_value.stdout"
+
+- name: 创建/etc/docker目录
+  file:
+    path: /etc/docker
+    force: yes
+    recurse: yes
+    state: directory
+  when: "'running' not in check_value.stdout"
+
+- name: 配置/etc/docker/daemon.json
+  template:
+    src: "docker/daemon.json.j2"
+    dest: "/etc/docker/daemon.json"
+    force: yes
+    mode: 0755
+  # when: "'running' not in check_value.stdout"
+
+- name: 启动docker服务
+  template:
+    src: "docker/docker.service.j2"
+    dest: "/etc/systemd/system/docker.service"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  notify:
+    - start docker
+  when: "'running' not in check_value.stdout"
+
+- name: 配置docker网卡脚本 
+  template:
+    src: "docker/add_network.sh.j2"
+    dest: "/home/{{ admin_user }}/tmp/add_network.sh"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+
+- name: 提前重启服务
+  meta: flush_handlers
+
+- name: 等待60s,让docker服务有时间重启
+  command: sleep 60
+
+# - name: check docker.pid
+#   stat: 
+#     path: "/run/docker.pid"
+#   register: dockerpid_output
+
+# - name: docker服务未挂起来，sleep 120s
+#   shell: "sleep 120"
+#   ignore_errors: True
+#   when: dockerpid_output.stat.exists != True
+
+# - name: check docker.pid
+#   stat: 
+#     path: "/run/docker.pid"
+#   register: dockerpid_output
+
+# - name: 添加docker服务的网卡
+#   command: "docker network create --driver bridge --subnet 10.232.0.0/16 --ipv6 --subnet 2001:db8:1::/64 admin_networ"
+#   ignore_errors: True
+#   # when: dockerpid_output.stat.exists == True
+
+- name: 添加docker-network
+  command: "bash /home/{{ admin_user }}/tmp/add_network.sh"
+  ignore_errors: True
+

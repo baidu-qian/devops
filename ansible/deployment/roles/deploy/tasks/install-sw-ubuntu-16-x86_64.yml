@@ -1,0 +1,37 @@
+---
+
+- name: copy rpm包
+  copy:
+    src: "{{ item }}"
+    dest: /tmp/rpms/
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0644
+  with_fileglob:
+    - "tools/rpms/{{ distribution_type }}/*.deb"
+  register: rpms_copied
+
+- name: 输出rpms
+  debug:
+    msg: "{{ rpms_copied }}"
+
+- name: local RPMs not found
+  fail:
+    msg: "RPMs not found in ../files/"
+  when: rpms_copied.results|length == 0 and rpms_copied.skipped and rpms_copied.skipped_reason.find('No items') != -1
+
+- name: rpm包数据化
+  set_fact:
+    rpm_list: "{{ rpms_copied.results | map(attribute='dest') | list}}"
+
+- name: list rpm_list
+  debug:
+    msg: "{{ rpm_list }}"
+
+- name: install debs
+  apt:
+    deb: "{{ item }}"
+  with_items:
+    - "{{ rpm_list }}"
+  ignore_errors: True

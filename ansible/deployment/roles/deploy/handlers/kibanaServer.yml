@@ -1,0 +1,9 @@
+---
+- name: start kibana
+  shell: "su - {{ admin_user }} -c \" ./server/kibana/bin/service start || ./server/kibana/bin/service.sh start \" "
+
+- name: stop kibana
+  shell: "su - {{ admin_user }} -c \" ./server/kibana/bin/service stop || ./server/kibana/bin/service.sh stop \" "
+
+- name: restart kibana
+  shell: "su - {{ admin_user }} -c \" ./server/kibana/bin/service restart || ./server/kibana/bin/service.sh restart \" "

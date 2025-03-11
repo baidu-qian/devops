@@ -1,0 +1,81 @@
+#!/bin/bash
+source ~/.bash_profile
+cd $(dirname "$0")
+BB_USER="{{ admin_user }}"
+
+start() {
+  cd /home/{{ admin_user }}/server/hadoop/hadoop/sbin/
+  /home/{{ admin_user }}/server/hadoop/hadoop/sbin/start-dfs.sh
+  sleep 2
+  /home/{{ admin_user }}/server/hadoop/hadoop/sbin/start-yarn.sh
+  sleep 2
+  /home/{{ admin_user }}/server/hadoop/bin/hadoop_dog.sh stop
+  sleep 2
+  /home/{{ admin_user }}/server/hadoop/bin/hadoop_dog.sh start
+  # 启动后稍等以下，否则会导致hadoop启不来
+  sleep 5
+  cd -
+}
+
+
+dog_start() {
+  cd /home/{{ admin_user }}/server/hadoop/hadoop/sbin/
+  /home/{{ admin_user }}/server/hadoop/hadoop/sbin/start-dfs.sh
+  sleep 2
+  /home/{{ admin_user }}/server/hadoop/hadoop/sbin/start-yarn.sh
+  cd -
+}
+
+stop() {
+    kill_server
+}
+
+restart() {
+    stop
+    sleep 2
+    start
+}
+
+status() {
+    echo "status"
+}
+
+reload() {
+    echo "reload"
+}
+
+kill_server() {
+    sync
+    /home/{{ admin_user }}/server/hadoop/bin/hadoop_dog.sh stop
+    echo "狗杀死!"
+    for i in `ps aux | grep "/server/hadoop"| grep -v 'grep'|grep -v "service.sh"| awk '{print $2}'`
+    do
+        kill -9 ${i}
+    done
+    sleep 3
+    echo "服务停止成功！"
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    dog_start)
+        dog_start
+        ;;
+    stop)
+        stop
+        ;;
+    reload)
+        reload
+        ;;
+    restart)
+        restart
+        ;;
+    status)
+        status
+        ;;
+    *)
+        echo "Usage: { start | stop | reload | restart | status | test |dog_start }"
+        exit 1
+esac

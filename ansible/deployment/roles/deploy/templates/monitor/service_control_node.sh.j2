@@ -1,0 +1,107 @@
+#!/bin/bash
+set -o errexit
+set +x
+cd $(dirname "$0")
+
+BB_HOME=$(
+  cd $(dirname "$0")
+  pwd
+)
+
+bb_start() {
+  #export DATA_SOURCE_NAME="postgresql://admin_pg:admin@{{ postgres_host }}:{{ postgres_port }}/postgres?sslmode=disable"
+  cd ../prometheus
+  nohup ./prometheus --web.enable-lifecycle --storage.tsdb.retention=90d &
+  cd ../alertmanager
+  nohup ./alertmanager &
+  cd ../grafana/bin
+  nohup ./grafana-server -config ../conf/grafana.ini &
+  cd ../../redis
+  nohup ./redis_exporter -redis.addr={{ redis_host }}:{{ redis_port }} -redis.password={{ redis_password }} &
+  cd ../kafka
+  nohup ./kafka_exporter --kafka.server={{ kafka_host }}:{{ kafka_port }} --kafka.version=0.10.0.0 &
+  cd ../elasticsearch
+  nohup ./elasticsearch_exporter --es.uri=elastic:admin@http://{{ elasticsearch_host }}:{{ elasticsearch_client_restful_port }} &
+  cd ../nginx
+  nohup ./nginx-vts-exporter -nginx.scrape_uri=http://{{ nginx_host }}:{{ nginx_exporter_port }}/status/format/json &
+  # cd ../postgres
+  # nohup ./postgres_exporter &
+  cd ../zookeeper
+  nohup ./zookeeper_exporter -zookeeper {{ zookeeper_host }}:{{ zookeeper_port }} &
+  cd ../node
+  nohup ./node_exporter &
+  cd ../process
+  nohup ./process-exporter -config.path process_name.yml&
+  cd ../bin
+  ./monitor_dog.sh stop > /dev/null 2>&1 &
+  sleep 1
+  ./monitor_dog.sh start > /dev/null 2>&1 &
+  sleep 1
+  echo "start monitor"
+}
+
+bb_start_dog() {
+  #export DATA_SOURCE_NAME="postgresql://admin_pg:admin@{{ postgres_host }}:{{ postgres_port }}/postgres?sslmode=disable"
+  cd ../prometheus
+  nohup ./prometheus --web.enable-lifecycle --storage.tsdb.retention=90d &
+  cd ../alertmanager
+  nohup ./alertmanager &
+  cd ../grafana/bin
+  nohup ./grafana-server -config ../conf/grafana.ini &
+  cd ../../redis
+  nohup ./redis_exporter -redis.addr={{ redis_host }}:{{ redis_port }} -redis.password={{ redis_password }} &
+  cd ../kafka
+  nohup ./kafka_exporter --kafka.server={{ kafka_host }}:{{ kafka_port }} --kafka.version=0.10.0.0 &
+  cd ../elasticsearch
+  nohup ./elasticsearch_exporter --es.uri=elastic:admin@http://{{ elasticsearch_host }}:{{ elasticsearch_client_restful_port }} &
+  cd ../nginx
+  nohup ./nginx-vts-exporter -nginx.scrape_uri=http://{{ nginx_host }}:{{ nginx_exporter_port }}/status/format/json &
+  #cd ../postgres
+  #nohup ./postgres_exporter &
+  cd ../zookeeper
+  nohup ./zookeeper_exporter -zookeeper {{ zookeeper_host }}:{{ zookeeper_port }} &
+  cd ../node
+  nohup ./node_exporter &
+  cd ../process
+  nohup ./process-exporter -config.path process_name.yml&
+  echo "start monitor_dog"
+}
+
+bb_stop() {
+  ps -ef|grep prometheus|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 &
+  ps -ef|grep alertmanager|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 &
+  ps -ef|grep grafana-server|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 &
+  ps -ef|grep redis_exporter|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 &
+  ps -ef|grep postgres_exporter|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 &
+  ps -ef|grep zookeeper_exporter|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 &
+  ps -ef|grep kafka_exporter|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 &
+  ps -ef|grep elasticsearch_exporter|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 &
+  ps -ef|grep node_exporter|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 &
+  ps -ef|grep process-exporter|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 &
+  ps -ef|grep nginx-vts-exporter|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 &
+  ps -ef|grep monitor_dog.sh|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 &
+  echo "stop monitor"
+}
+
+bb_status() {
+  echo "status"
+}
+
+case $1 in
+start)
+  bb_start
+  ;;
+stop)
+  bb_stop
+  ;;
+start_dog)
+  bb_start_dog
+  ;;
+status)
+  bb_status
+  ;;
+*)
+  echo "Usage: { start | stop | start_dog | status }"
+  exit 1
+  ;;
+esac

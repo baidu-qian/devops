@@ -1,0 +1,66 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - {{ prometheus_host }}:{{ alertmanager_port }}
+
+rule_files:
+  - /home/{{ admin_user }}/ops/monitor/rules/*.rules
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['{{ prometheus_host }}:{{ prometheus_port }}']
+        labels:
+          instance: 'prometheus'
+
+  - job_name: elasticsearch
+    static_configs:
+      - targets: ['{{ prometheus_host }}:{{ elasticsearch_monitor_port }}']
+        labels:
+          instance: 'monitor-es:{{ prometheus_host }}'
+
+  - job_name: redis
+    static_configs:
+      - targets: ['{{ prometheus_host }}:{{ redis_monitor_port }}']
+        labels:
+          instance: 'monitor-redis:{{ prometheus_host }}'
+
+  - job_name: kafka
+    static_configs:
+      - targets: ['{{ prometheus_host }}:{{ kafka_monitor_port }}']
+        labels:
+          instance: 'monitor-kafka:{{ prometheus_host }}'
+
+  - job_name: nginx
+    static_configs:
+      - targets: ['{{ prometheus_host }}:{{ nginx_monitor_port }}']
+        labels:
+          instance: 'monitor-nginx:{{ prometheus_host }}'
+
+  - job_name: postgres
+    static_configs:
+      - targets: ['{{ prometheus_host }}:{{ postgres_monitor_port }}']
+        labels:
+          instance: 'monitor-pg:{{ prometheus_host }}'
+
+  - job_name: zookeeper
+    static_configs:
+      - targets: ['{{ prometheus_host }}:{{ zookeeper_monitor_port }}']
+        labels:
+          instance: 'monitor-zk:{{ prometheus_host }}'
+
+  - job_name: nodexporter
+    static_configs:
+      - targets: ['{{ prometheus_host }}:{{ node_exporter_port }}']
+
+  - job_name: process
+    static_configs:
+      - targets: ['{{ prometheus_host }}:{{ process_exporter_port }}']
+
+
+

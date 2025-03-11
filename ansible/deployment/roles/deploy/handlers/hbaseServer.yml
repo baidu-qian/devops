@@ -1,0 +1,9 @@
+---
+- name: start hbase
+  shell: "su - {{ admin_user }} -c \"./server/hbase/bin/service.sh start \""
+
+- name: stop hbase
+  shell: "su - {{ admin_user }} -c \"./server/hbase/bin/service.sh stop \""
+
+- name: restart hbase
+  shell: "su - {{ admin_user }} -c \"./server/hbase/bin/service.sh restart \""

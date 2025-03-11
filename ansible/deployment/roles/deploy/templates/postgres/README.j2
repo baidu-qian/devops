@@ -1,0 +1,54 @@
+## 为什么没有脚本化
+1. 脚本需要跨服务器处理，目前最好的办法是ansible，但操作服务器不一定有ansible
+2. 从服务器ip没有办法从配置文件中获取，强行脚本化增加了脚本的不确定性
+3. 主从切换服务操作不难，大不了备份数据库，删除pg，重新部署后再导回来，也能完成pg的主从切换
+
+## 作用
+此README为主从切换时，需要的手工操作
+当pg主库发生意外停止，不能提供服务，需要备库顶上，请如下操作
+
+
+## 操作
+### 如下操作以A B服务器举例
+- 服务器A : 主
+- 服务器B : 从
+
+1. 停止主库   A
+su - admin 
+cd server/postgres/bin
+./service.sh stop
+
+2. 将从库晋级为主库 B
+docker  exec -ti postgres  su postgres -c "pg_ctl promote"
+
+3. 新的主服务器修改连接数，并重启服务 B
+sudo vim ~/server/postgres/data/postgresql.conf
+将
+max_connections = 2400
+调整为
+max_connections = 2048
+保存
+./service.sh stop
+./service.sh start
+
+4. 新的从服务器修改配置，并重启服务器 A
+sudo touch ~/server/postgres/data/standby.signal
+sudo echo "primary_conninfo =  'host=服务器B地址  port=5432 user=replica password=admin'
+hot_standby_feedback = on
+recovery_target_timeline = latest " >> ~/server/postgres/data/postgresql.conf
+sudo sed -i "s/max_connections = 2048/max_connections = 2400" ~/server/postgres/data/postgresql.conf
+echo echo "primary_conninfo =  'host=服务器B地址  port=5432 user=replica password=admin'" >> >> ~/server/postgres/data/postgresql.auto.conf
+
+cd ~/server/postgres/bin
+./service.sh stop
+./service.sh start
+
+5. 检查pg的主从状态  B
+docker exec -it postgres psql -U admin_pg postgres -c "select client_addr,sync_state from pg_stat_replication;"
+
+如下结果是正常的返回值
+[admin@172-16-44-32 postgres]$ docker exec -it postgres psql -U admin_pg postgres -c "select client_addr,sync_state from pg_stat_replication;"
+ client_addr  | sync_state 
+--------------+------------
+ 172.16.44.57 | async
+(1 row)

@@ -1,0 +1,324 @@
+---
+#- tags: 创建用户
+- name: check {{ admin_user }}是否设置完成
+  stat: 
+    path: "/home/{{ admin_user }}/tools/jdk/bin/java"
+  register: check_admin_user
+
+- name: 输出java
+  debug:
+    msg: "{{ check_admin_user }}"
+
+#- name: 用户初始化完成
+#  meta: end_play
+#  when: check_admin_user.stat.exists == True
+
+- name: set distribution type
+  set_fact:
+    distribution_type: "{{ ansible_distribution.split(' ')[0]|lower }}-{{ ansible_distribution_major_version|replace('\"','')|lower }}-{{ ansible_architecture|lower }}"
+
+- name: "查看最大空间目录"
+  shell: "df |grep -v 'nfs' | grep '/'|sort -k 4 -n |awk '{if($NF!~\"/run|/sys|/run|/dev|/boot|/tmp|/var|/usr|docker\")print $NF}'| tail -n 1"
+  register: disk_out
+
+- name : 最大空间目录为{{ disk_out.stdout }}
+  debug: var=disk_out.stdout verbosity=0
+  when: check_admin_user.stat.exists == False
+
+- name: 创建一个docker的group组
+  group:
+    name: docker
+    state: present
+  when: check_admin_user.stat.exists == False
+
+- name: 创建一个{{ admin_user }}的group组
+  group:
+    name: "{{ admin_user }}"
+    state: present
+  when: check_admin_user.stat.exists == False and ansible_distribution.split(' ')[0]|lower == 'sles'
+
+- name: python2 set user passwd
+  shell: python -c "import hashlib; print(hashlib.sha512(b'{{ admin_password }}').hexdigest())"
+  register: hashed_password
+  ignore_errors: true
+
+- name: python3 set user passwd
+  shell: python3 -c "import hashlib; print(hashlib.sha512(b'{{ admin_password }}').hexdigest())"
+  register: hashed_password
+  when: hashed_password.rc != 0
+
+- name:  创建用户于最大目录/home
+  user:
+    name: "{{ admin_user }}"
+    password: "{{ admin_password|password_hash('sha512') }}"
+    home: "/home/{{ admin_user }}"
+    state: present
+    groups: docker
+    append: yes
+    shell: /bin/bash
+    update_password: always
+  when: disk_out.stdout == '/' and check_admin_user.stat.exists == False
+
+- name:  创建用户于最大目录"{{ disk_out.stdout }}""
+  user:
+    name: "{{ admin_user }}"
+    password: "{{ admin_password|password_hash('sha512') }}"
+    home: "{{ disk_out.stdout }}/{{ admin_user }}"
+    state: present
+    groups: docker
+    append: yes
+    shell: /bin/bash
+    update_password: always
+  when: disk_out.stdout != '/' and check_admin_user.stat.exists == False
+
+- name: 用户软连接到/home/{{ admin_user }}
+  file:
+    src: "{{ disk_out.stdout }}/{{ admin_user }}"
+    dest: "/home/{{ admin_user }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    state: link
+  when: disk_out.stdout != '/' and disk_out.stdout != '/home' and check_admin_user.stat.exists == False
+
+- name: 创建部署所需要的目录
+  file:
+    path: "/home/{{ admin_user }}/{{ item }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+    recurse: yes
+    state: directory
+  with_items:
+    - tools
+    - app
+    - server
+    - backups
+    - bin
+    - ops
+    - tmp
+    - td
+    - .ssh
+  when: check_admin_user.stat.exists == False
+
+# - name: 配置生成密钥脚本
+#   template:
+#     src: adminUser/init_key.sh.j2
+#     dest: /tmp/init_key.sh
+#   connection: local
+
+- name: 生成密钥
+  become_user: "{{ ansible_ssh_user }}"
+  shell: "bash /tmp/init_key.sh"
+  ignore_errors: True
+  connection: local
+
+- name: 生成密钥
+  shell: "bash /tmp/init_key.sh"
+  ignore_errors: True
+  connection: local
+
+- name: 添加认证至远程主机
+  authorized_key:
+    user: "{{ admin_user }}"
+    state: present
+    key: "{{ lookup('file', '/root/.ssh/id_rsa.pub') }}"
+  ignore_errors: True
+
+- name: 添加认证至远程主机
+  authorized_key:
+    user: "{{ ansible_ssh_user }}"
+    state: present
+    key: "{{ lookup('file', '/home/{{ ansible_ssh_user }}/.ssh/id_rsa.pub') }}"
+  ignore_errors: True
+
+# - name: copy 密钥文件
+#   copy:
+#     src: "{{ item }}"
+#     dest: /home/{{ admin_user }}/.ssh/
+#     owner: "{{ admin_user }}"
+#     group: "{{ admin_user }}"
+#     force: yes
+#     mode: 0600
+#   with_fileglob:
+#     - "/root/.ssh/id_rsa"
+#     - "/root/.ssh/id_rsa.pub"
+#     - "/root/.ssh/authorized_keys"
+#     - "/home/{{ ansible_ssh_user }}/.ssh/id_rsa"
+#     - "/home/{{ ansible_ssh_user }}/.ssh/id_rsa.pub"
+#     - "/home/{{ ansible_ssh_user }}/.ssh/authorized_keys"
+#   ignore_errors: True
+
+- name: 配置admin密钥
+  template:
+    src: "adminUser/ssh/{{ item.key }}"
+    dest: "/home/{{ admin_user }}/.ssh/{{ item.value }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0600
+  with_items:
+    - { key: 'id_rsa.j2' , value: 'id_rsa' }
+    - { key: 'id_rsa.pub.j2' , value: 'id_rsa.pub' }
+    - { key: 'authorized_keys.j2' , value: 'authorized_keys' }
+
+- name: 传jdk
+  unarchive:
+    src: "tools/jdk/{{ ansible_architecture|lower }}/{{ jdk_tarball_name }}"
+    dest: "/home/{{ admin_user }}/tools"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+  when: check_admin_user.stat.exists == False
+
+- name: jdk做软连接
+  file:
+    src: "/home/{{ admin_user }}/tools/{{ jdk_name }}"
+    dest: "/home/{{ admin_user }}/tools/jdk"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    state: link
+    follow: False
+  when: check_admin_user.stat.exists == False
+
+- name: 传openjdk17u
+  unarchive:
+    src: "tools/jdk/{{ ansible_architecture|lower }}/{{ openjdk_tarball_name }}"
+    dest: "/home/{{ admin_user }}/tools"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+  when: check_admin_user.stat.exists == False
+
+- name: openjdk做软连接
+  file:
+    src: "/home/{{ admin_user }}/tools/{{ openjdk_name }}"
+    dest: "/home/{{ admin_user }}/tools/jdk-17"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    state: link
+    follow: False
+  when: check_admin_user.stat.exists == False
+
+- name: 配置环境变量
+  template:
+    src: adminUser/bash_profile.j2
+    dest: /home/{{ admin_user }}/.bash_profile
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+  when: check_admin_user.stat.exists == False
+
+- name: 配置sudo配置
+  template:
+    src: adminUser/admin_sudo.j2
+    dest: /etc/sudoers.d/{{ admin_user }}_sudo
+  when: check_admin_user.stat.exists == False
+
+- name: 调整系统文件sysctl.conf
+  lineinfile:
+    dest: "/etc/sysctl.conf"
+    regexp: "^{{ item.key }}"
+    line: "{{ item.value }}"
+  with_items:
+    - { key: 'fs.file-max=' , value: 'fs.file-max=2048000' }
+    - { key: 'net.ipv4.tcp_tw_reuse=' , value: 'net.ipv4.tcp_tw_reuse=1' }
+    - { key: 'vm.swappiness=' , value: 'vm.swappiness=0' }
+    - { key: 'vm.max_map_count=' , value: 'vm.max_map_count=262144' }
+    - { key: 'net.ipv4.ip_forward=' , value: 'net.ipv4.ip_forward=1' }
+    - { key: 'net.ipv6.conf.all.forwarding=' , value: 'net.ipv6.conf.all.forwarding=1' }
+    - { key: 'net.ipv4.tcp_fin_timeout=' , value: 'net.ipv4.tcp_fin_timeout=10' }
+  when: check_admin_user.stat.exists == False
+
+- name: Extract kernel version
+  set_fact:
+    kernel_version: "{{ ansible_kernel.split('-')[0] }}"
+
+- name: 内核低于4.0时，调整tcp参数
+  lineinfile:
+    dest: "/etc/sysctl.conf"
+    regexp: "^{{ item.key }}"
+    line: "{{ item.value }}"
+  with_items:
+    - { key: 'net.ipv4.tcp_tw_recycle=' , value: 'net.ipv4.tcp_tw_recycle=1' }
+  when:
+    - kernel_version | string < '4.0'
+
+- name: 系统配置文件sysctl生效
+  command: "sysctl -p"
+  ignore_errors: True
+  when: check_admin_user.stat.exists == False
+
+- name: 调整用户文件limits.conf
+  lineinfile: 
+    dest: "/etc/security/limits.conf"
+    regexp: "^{{ item.key }}"
+    line: "{{ item.value }}"
+  with_items:
+    - { key: 'admin soft nofile ' , value: 'admin soft nofile 65536' }
+    - { key: 'admin hard nofile' , value: 'admin hard nofile 65536' }
+    - { key: 'admin soft memlock' , value: 'admin soft memlock unlimited' }
+    - { key: 'admin hard memlock' , value: 'admin hard memlock unlimited' }
+    - { key: '\* soft nproc' , value: '* soft nproc 65536' }
+    - { key: '\* - nofile' , value: '* - nofile 65536' }
+  when: check_admin_user.stat.exists == False
+
+- name: check /etc/security/limits.d/20-nproc.conf 是否存在
+  stat: 
+    path: "check /etc/security/limits.d/20-nproc.conf"
+  register: check_20nproc
+
+- name: 调整用户文件20-nproc
+  lineinfile: 
+    dest: "/etc/security/limits.d/20-nproc.conf"
+    regexp: "^{{ item.key }}"
+    line: "{{ item.value }}"
+  with_items:
+    - { key: 'admin soft nofile ' , value: 'admin soft nofile 65536' }
+    - { key: 'admin hard nofile' , value: 'admin hard nofile 65536' }
+    - { key: 'admin soft memlock' , value: 'admin soft memlock unlimited' }
+    - { key: 'admin hard memlock' , value: 'admin hard memlock unlimited' }
+    - { key: '\* soft nproc' , value: '* soft nproc 65536' }
+    - { key: '\* - nofile' , value: '* - nofile 65536' }
+  when: 
+    - check_admin_user.stat.exists == False
+    - check_20nproc.stat.exists == True
+
+#关闭防火墙和selinux
+#关闭防火墙
+- name: 停止firewalld
+  service:
+    name: firewalld
+    state: stopped
+    enabled: no
+  when: check_admin_user.stat.exists == False
+  ignore_errors: True
+  
+#关闭selinux
+- name: setenforce 0
+  shell: "setenforce 0"
+  failed_when: false
+  when: check_admin_user.stat.exists == False
+
+- name: set selinux disabled
+  replace:
+    path: /etc/selinux/config
+    regexp: '^SELINUX=enforcing'
+    replace: 'SELINUX=disabled'
+  when: check_admin_user.stat.exists == False
+  ignore_errors: True
+
+- name: set include tasks name
+  set_fact:
+    installswfile: "install-sw-{{ distribution_type }}.yml"
+  when: check_admin_user.stat.exists == False
+
+- name: cat file name
+  debug:
+    msg: "{{ installswfile }}"
+  when: check_admin_user.stat.exists == False
+
+- include_tasks: "{{ installswfile }}"
+  when: 
+    - check_admin_user.stat.exists == False
+    - ansible_architecture|lower == "x86_64"

@@ -1,0 +1,76 @@
+---
+# tags: install_filebeat
+
+- name: check docker.pid
+  stat: 
+    path: "/run/docker.pid"
+  register: dockerpid_output
+  
+- name: check users
+  stat: 
+    path: "/home/{{ admin_user }}/app"
+  register: users_output
+
+# - name: 输出users
+#   debug:
+#     msg: "{{ users_output }}"
+
+- import_tasks: createUser.yml
+  when: users_output.stat.exists != True
+- import_tasks: dockerEnv.yml
+  when: dockerpid_output.stat.exists != True
+
+- name: 创建filebeat的目录
+  file:
+    path: "/home/{{ admin_user }}/ops/filebeat/{{ item }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+    recurse: yes
+    state: directory
+  with_items:
+    - data
+    - bin
+
+
+- name: 安装filebeat包
+  unarchive:
+    src: "{{ filebeat_tarball_name }}"
+    dest: "/home/{{ admin_user }}/ops/filebeat"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+  # notify:
+  #   - restart filebeat
+
+- name: filebeat软连接到/home/{{ admin_user }}/ops/filebeat/filebeat
+  file:
+    src: "/home/{{ admin_user }}/ops/filebeat/{{ filebeat_name }}"
+    dest: "/home/{{ admin_user }}/ops/filebeat/filebeat"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    state: link
+    follow: False
+
+- name: 配置filebeat服务配置文件及脚本
+  template:
+    src: "filebeat/{{ item.key }}"
+    dest: "/home/{{ admin_user }}/ops/filebeat/{{ item.value }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  with_items:
+    - { key: 'filebeat.yml.j2' , value: 'filebeat/filebeat.yml' }
+    - { key: 'service.sh.j2' , value: 'bin/service.sh' }
+    - { key: 'filebeat_dog.sh.j2' , value: 'bin/filebeat_dog.sh' }
+    - { key: 'startup.sh.j2' , value: 'bin/startup.sh' }
+
+- name: ready to notify
+  shell: ls
+  notify:
+    - restart filebeat
+
+- name: 提前重启服务
+  meta: flush_handlers

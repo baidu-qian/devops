@@ -1,0 +1,4 @@
+#!/bin/bash
+
+export JAVA_HOME=/home/{{ admin_user }}/tools/jdk
+bash /home/{{ admin_user }}/server/hbase/hbase/bin/hbase-daemon.sh --config /home/{{ admin_user }}/server/hbase/hbase/bin/../conf foreground_start regionserver -D hbase.regionserver.port=16201 -D hbase.regionserver.info.port=16301

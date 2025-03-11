@@ -1,0 +1,73 @@
+input {
+    kafka {
+    #    bootstrap_servers => "{% for i in groups['kafka'] %}{{ i }}:{{ kafka_port }} {%- if not loop.last %},{% endif -%} {% endfor %}"
+        bootstrap_servers => "{{ groups['kafka'][0] }}:{{ kafka_port }}"
+        topics => ["admin_elk"]
+        group_id => "logstash_kafka"
+        codec => "json"
+    }
+    # beats {
+    #     port => "5044"
+    # }
+}
+
+filter {
+    if "nginx" in [tags] {
+        grok {
+            match => {
+                "message" => "%{IPORHOST:remote_ip} - %{DATA:user_name} \[%{HTTPDATE:access_time}\] \"%{WORD:http_method} %{DATA:url} HTTP/%{NUMBER:http_version}\" %{NUMBER:response_code} %{NUMBER:body_sent_bytes} \"%{DATA:referrer}\" \"%{DATA:http_agent}\""
+            }
+            overwrite => [ "message" ]
+            remove_field => ["message"]
+        }
+        geoip {
+            source => "remote_ip"
+        }
+        json {
+           source => "message"
+           target => "jsoncontent"
+           remove_field => ["message"]
+        }
+    } else if "hbase"  in [tags] or "kafka" in [tags] or "zookeeper" in [tags] {
+        grok {
+            match => {
+                "message" => "\[%{TIMESTAMP_ISO8601:timestamp}\]\[%{LOGLEVEL:log-level}\]\[%{DATA:class}\]\-%{GREEDYDATA:message}"
+            }
+            overwrite => [ "message" ]
+            remove_tag => ["_jsonparsefailure"]
+        }
+        json {
+           source => "message"
+           target => "jsoncontent"
+           #remove_field => ["message"]
+           #remove_field => ["@version","agent.ephemeral_id","agent_id","log.offset"]
+        }
+    } else {
+        grok {
+            match => {
+                "message" => "\[%{TIMESTAMP_ISO8601:timestamp}\]\[%{DATA:server-tag}\]\[%{LOGLEVEL:log-level}\]\[%{DATA:main}\]\[%{DATA:class}\]\-%{GREEDYDATA:message}"
+            }
+            overwrite => [ "message" ]
+            remove_tag => ["_jsonparsefailure"]
+        }
+        json {
+           source => "message"
+           target => "jsoncontent"
+           #remove_field => ["message"]
+           #remove_field => ["@version","agent.ephemeral_id","agent_id","log.offset"]
+        }
+    }
+}
+
+output {
+  stdout { codec => rubydebug }
+  elasticsearch {
+    codec => "json"
+    hosts => ["elasticsearch:{{ elasticsearch_master_port }}"]
+    user => "{{ elk_user }}"
+    password => "{{ elk_password }}"
+    index => "admin_elk-%{+YYYY.MM.dd}"
+    document_type => "data"
+    ecs_compatibility => disabled
+  }
+}

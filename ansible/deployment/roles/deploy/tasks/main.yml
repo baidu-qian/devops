@@ -1,0 +1,107 @@
+---
+# tasks file for admin-deploy-4.8
+
+# checkHadoopHA
+- import_tasks: checkHadoopHA.yml
+  tags:
+    - install
+    - update510
+    - check_hadoop_ha
+    - always
+    
+## server
+- import_tasks: installZookeeper.yml
+  tags: 
+    - install
+    - install_zookeeper
+  when: 
+    - inventory_hostname in groups['zookeeper'] 
+- import_tasks: installHadoop.yml
+  tags:
+    - install
+    - install_hadoop
+    - install_hdfs
+  when:
+    - inventory_hostname in groups['namenode'] or inventory_hostname in groups['datanode']
+    - hdfs_tag == True
+
+- import_tasks: installKafka.yml
+  tags: 
+    - install
+    - install_kafka
+  when: 
+    - inventory_hostname in groups['kafka']
+
+- import_tasks: installHbase.yml
+  tags: 
+    - install
+    - install_hbase
+    - update_hbase
+    - update510
+  when: 
+    - inventory_hostname in groups['hbase']
+
+- import_tasks: installPostgres.yml
+  tags: 
+    - install
+    - install_postgres
+  when: inventory_hostname in groups['postgres']
+
+- import_tasks: installRedis.yml
+  tags: 
+    - install
+    - install_redis
+  when: inventory_hostname in groups['redis']
+
+- import_tasks: installElasticsearchClient.yml
+  tags: 
+    - install
+    - install_elasticsearchClient
+  when: inventory_hostname in groups['elasticsearchClient']
+
+- import_tasks: installElasticsearchMaster.yml
+  tags: 
+    - install
+    - install_elasticsearchMaster
+  when: inventory_hostname in groups['elasticsearchMaster']
+
+- import_tasks: installKibana.yml
+  tags: 
+    - install
+    - install_kibana
+  when: inventory_hostname in groups['kibana']
+
+- import_tasks: installMinio.yml
+  tags: 
+    - install
+    - install_minio
+    - 4.8to4.9
+  when: inventory_hostname in groups['minio']
+
+### elk
+- import_tasks: installELK.yml
+  tags:  
+    - install
+    - install_ELK
+    - 4.8to4.9
+  when: inventory_hostname in groups['ELK']
+
+### filebeat
+- import_tasks: installFilebeat.yml
+  tags:  
+    - install
+    - install_filebeat
+    - 4.8to4.9
+
+### portainer
+- import_tasks: installPortainer.yml
+  tags: 
+    - install
+    - install_portainer
+    - 4.8to4.9
+  when:
+    - ansible_architecture|lower == "x86_64"
+
+- import_tasks: setKafkaTopic.yml
+  tags:
+    - set_kafka_topic

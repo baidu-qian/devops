@@ -1,0 +1,9 @@
+#!/bin/bash
+
+docker run --init --name=kibana \
+ -v /etc/hosts:/etc/hosts \
+ -v /home/{{ admin_user }}/ops/elk/kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml \
+ --env TZ=PRC \
+ -p "14001:{{ kibana_port }}" \
+ --network admin_network \
+ --rm docker.elastic.co/kibana/kibana:7.16.2

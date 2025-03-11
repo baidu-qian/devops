@@ -1,0 +1,18 @@
+---
+# handlers file for admin-deploy-4.8
+## server
+- import_tasks: kafkaServer.yml
+- import_tasks: zookeeperServer.yml
+- import_tasks: hbaseServer.yml
+- import_tasks: redisServer.yml
+- import_tasks: postgresServer.yml
+- import_tasks: dockerenvServer.yml
+- import_tasks: elasticsearchClientServer.yml
+- import_tasks: elasticsearchMasterServer.yml
+- import_tasks: kibanaServer.yml
+- import_tasks: monitor.yml
+- import_tasks: minioServer.yml
+## ops
+- import_tasks: ELKServer.yml
+- import_tasks: filebeatServer.yml
+- import_tasks: portainerServer.yml

@@ -1,0 +1,54 @@
+<configuration>
+
+  <!--指定mapreduce的shuffle服务-->
+  <property>
+    <name>yarn.nodemanager.aux-services</name>
+    <value>mapreduce_shuffle</value>
+  </property>
+  
+  <!--是否开启yarn的HA-->
+  <property>
+    <name>yarn.resourcemanager.ha.enabled</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.cluster-id</name>
+    <value>admin_yarn</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.ha.rm-ids</name>
+    <!-- <value>rm1,rm2</value> -->
+    <value>{% for i in groups['namenode'] %}{% if loop.index0 <= 3 %}rm{{ loop.index }}{%- if not loop.last %},{% endif -%}{% endif %}{% endfor %}</value>
+  </property>
+  {% for ip in groups['namenode'] %}
+  {% if loop.index0 <= 3 %} 
+  <property>
+    <name>yarn.resourcemanager.hostname.rm{{ loop.index }}</name>
+    <value>{{ hostvars[ip]['ansible_hostname'] }}</value>
+  </property>
+  <property>
+    <name>yarn.resourcemanager.webapp.address.rm{{ loop.index }}</name>
+    <value>{{ hostvars[ip]['ansible_hostname'] }}:{{ hdfs_yarn_resourcemanager_webapp_address_port }}</value>
+  </property>
+  {% endif %}
+  {% endfor %}
+  
+  <!--指定zookeeper的集群地址-->
+  <property>
+    <name>yarn.resourcemanager.zk-address</name>
+    <value>{% for i in groups['zookeeper'] %}{{ hostvars[i]['ansible_hostname'] }}:{{ zookeeper_port }} {%- if not loop.last %},{% endif -%} {% endfor %}</value>
+  </property>
+  <property>
+    <name>yarn.nodemanager.resource.memory-mb</name>
+    <value>2048</value>
+  </property>
+  <property>
+    <name>yarn.nodemanager.resource.cpu-vcores</name>
+    <value>2</value>
+  </property>
+  <property>
+    <name>yarn.scheduler.minimum-allocation-mb</name>
+    <value>256</value>
+  </property>
+
+</configuration>

@@ -1,0 +1,248 @@
+---
+# tags: deploy_postgres
+
+- name: check docker.pid
+  stat: 
+    path: "/run/docker.pid"
+  register: dockerpid_output
+  
+- name: check users
+  stat: 
+    path: "/home/{{ admin_user }}/app"
+  register: users_output
+
+# - name: 输出users
+#   debug:
+#     msg: "{{ users_output }}"
+
+- import_tasks: createUser.yml
+  when: users_output.stat.exists != True
+- import_tasks: dockerEnv.yml
+  when: dockerpid_output.stat.exists != True
+
+- name: copy postgres
+  copy:
+    src: "server/postgres"
+    dest: "/home/{{ admin_user }}/server/"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+
+- name: 创建部署所需要的目录 
+  file:
+    path: "/home/{{ admin_user }}/server/postgres/{{ item }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+    recurse: yes
+    state: directory
+  with_items:
+    - bin
+    - backups
+    - config
+    - images
+    - log
+    - data
+    - tmp
+
+- name: create user polkitd
+  user:
+    name: polkitd
+    shell: /sbin/nologin
+  when: ansible_distribution.split(' ')[0]|lower == "debian" or ansible_distribution.split(' ')[0]|lower == "uniontech" or ansible_distribution.split(' ')[0]|lower == "ubuntu" or ansible_distribution.split(' ')[0]|lower == "sles"
+
+- name: 创建部署所需要的目录 
+  file:
+    path: "/home/{{ admin_user }}/server/postgres/{{ item }}"
+    owner: polkitd
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+    recurse: yes
+    state: directory
+  with_items:
+    - data
+
+- name: load postgres image
+  command: "docker load -i /home/{{ admin_user }}/server/postgres/images/{{ ansible_architecture|lower }}/postgres.tar"
+#   when:
+#     - ansible_os_family|lower != "kylin linux advanced server"
+
+# - name: kylin load postgres image
+#   command: "docker load -i /home/{{ admin_user }}/server/postgres/images/{{ ansible_architecture|lower }}/postgres.tar.bk"
+#   when:
+#     - ansible_os_family|lower == "kylin linux advanced server"
+#     - ansible_architecture|lower == "x86_64"
+#     - ansible_distribution_version|lower == "v10"
+
+- name: 配置postgres服务配置文件及脚本
+  template:
+    src: "postgres/{{ item.key }}"
+    dest: "/home/{{ admin_user }}/server/postgres/{{ item.value }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  with_items:
+    - { key: 'service.sh.j2' , value: 'bin/service.sh' }
+    - { key: 'docker-compose.yml.j2' , value: 'bin/docker-compose.yml' }
+    - { key: 'backup.sh.j2' , value: 'bin/backup.sh' }
+    - { key: 'startup.sh.j2' , value: 'bin/startup.sh' }
+    - { key: '.pgpass.j2' , value: 'config/.pgpass' }
+  when: ansible_architecture|lower == "x86_64"
+
+- name: 配置postgres服务配置文件及脚本
+  template:
+    src: "postgres/{{ item.key }}"
+    dest: "/home/{{ admin_user }}/server/postgres/{{ item.value }}"
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    force: yes
+    mode: 0755
+  with_items:
+    - { key: 'service.sh.j2' , value: 'bin/service.sh' }
+    - { key: 'docker-compose_aarch64.yml.j2' , value: 'bin/docker-compose.yml' }
+    - { key: 'backup.sh.j2' , value: 'bin/backup.sh' }
+    - { key: 'startup.sh.j2' , value: 'bin/startup.sh' }
+    - { key: '.pgpass.j2' , value: 'config/.pgpass' }
+  when: ansible_architecture|lower == "aarch64"
+
+- name: pgpass文件权限调整600
+  command: "chmod 600 /home/{{ admin_user }}/server/postgres/config/.pgpass"
+
+- name: 定时任务backup postgresql
+  cron:
+    name: backup_postgresql
+    minute: 0
+    hour: 2
+    user: "{{ admin_user }}"
+    job: "source ~/.bash_profile && /home/{{ admin_user }}/server/postgres/bin/backup.sh"
+    state: present
+
+- name: list
+  shell: ls
+  notify:
+    - restart postgres
+
+- name: 提前重启服务
+  meta: flush_handlers
+
+- name: 检查postgresql.conf
+  stat:
+    path: "/home/{{ admin_user }}/server/postgres/data/postgresql.conf"
+  register: pg_config
+  ignore_errors: True
+
+- name: 调整postgres最大连接数
+  lineinfile: 
+    dest: "/home/{{ admin_user }}/server/postgres/data/postgresql.conf"
+    regexp: "^max_connections"
+    line: "max_connections = 2048"
+  when: pg_config.stat.exists == True
+
+- name: list
+  shell: ls
+  notify:
+    - restart postgres
+  when: supervisord_used == false
+
+- name: 提前重启服务
+  meta: flush_handlers
+
+- block:
+  - name: 创建复制用户
+    become_user: "{{ admin_user }}"
+    shell: "sleep 10; docker exec -ti postgres psql -U admin_pg postgres -c \"CREATE ROLE replica login replication encrypted password \'{{ pg_password }}\';\""
+  
+  - name: 允许replica用户访问
+    lineinfile:
+      dest: "/home/{{ admin_user }}/server/postgres/data/pg_hba.conf"
+      line: "host    replication     replica         0.0.0.0/0      md5"
+      state: present
+      create: yes
+
+  - name: 调整主pg的配置文件
+    lineinfile: 
+      dest: "/home/{{ admin_user }}/server/postgres/data/postgresql.conf"
+      regexp: "{{ item.key }}"
+      line: "{{ item.value }}"
+    with_items:
+      - { key: '^listen_addresses' , value: "listen_addresses = '*'" }
+      - { key: '^hot_standby' , value: 'hot_standby = on' } 
+      - { key: '^wal_level' , value: 'wal_level = replica' } 
+      - { key: '^max_wal_senders' , value: 'max_wal_senders = 10' } 
+      - { key: '^wal_keep_size' , value: 'wal_keep_size = 1024' } 
+      - { key: '^wal_sender_timeout' , value: 'wal_sender_timeout = 60s' } 
+      - { key: '^max_connections' , value: 'max_connections = 2048' } 
+    when:
+      - inventory_hostname in groups["postgres"][0]
+    
+  - name: list
+    shell: ls
+    notify:
+      - restart postgres
+    when: 
+      - inventory_hostname in groups["postgres"][0]
+
+  - name: 重启服务pg  主服务
+    meta: flush_handlers
+    when:
+      - inventory_hostname in groups["postgres"][0]
+  
+  - name: 从服务删除数据，同步主服务数据
+    become_user: "{{ admin_user }}"
+    shell: "docker exec -ti postgres sh -c 'source /etc/profile ; rm -rf /var/lib/postgresql/data/ ; pg_basebackup -h  {{ groups[\"postgres\"][0] }} -p {{ postgres_port }} -U replica -Fp -Xs -Pv -R -D /var/lib/postgresql/data'"
+    register: result
+    until: result.rc == 0
+    retries: 5
+    delay: 15
+    ignore_errors: True
+    when: 
+      - inventory_hostname in groups["postgres"][1:]
+  
+  - name: 配置从pg的配置文件
+    lineinfile: 
+      dest: "/home/{{ admin_user }}/server/postgres/data/postgresql.conf"
+      regexp: "{{ item.key }}"
+      line: "{{ item.value }}"
+    with_items:
+      - { key: '^primary_conninfo' , value: "primary_conninfo =  'host={{ groups[\"postgres\"][0] }}  port={{ postgres_port }} user=replica password={{ pg_password }}'" }
+      - { key: '^hot_standby' , value: 'hot_standby = on' } 
+      - { key: '^hot_standby_feedback' , value: 'hot_standby_feedback = on' } 
+      - { key: '^recovery_target_timeline' , value: 'recovery_target_timeline = latest' } 
+      - { key: '^max_connections' , value: 'max_connections = 2400' } 
+    when:
+      - inventory_hostname in groups["postgres"][1:]
+
+  - name: 清理垃圾文件
+    command: "rm -f /home/{{ admin_user }}/server/postgres/data/postgresql.auto.conf"
+    when:
+      - inventory_hostname in groups["postgres"][1:]
+    
+  - name: 添加pg主务切换的README
+    template:
+      src: "postgres/{{ item.key }}"
+      dest: "/home/{{ admin_user }}/server/postgres/{{ item.value }}"
+      owner: "{{ admin_user }}"
+      group: "{{ admin_user }}"
+      force: yes
+      mode: 0755
+    with_items:
+      - { key: 'README.j2' , value: 'bin/README' }
+
+  - name: list
+    shell: ls
+    notify:
+      - restart postgres
+    when: 
+      - inventory_hostname in groups["postgres"][1:]
+
+  - name: 重启服务pg  从服务
+    meta: flush_handlers
+    when:
+      - inventory_hostname in groups["postgres"][:]
+
+  when: 
+     - groups['postgres'] | length  >= 2

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+PRG="$0"
+BIN=`cd $(dirname "$PRG"); pwd -P`
+HOME=`dirname "$BIN"`
+LIB=`find ${HOME}/kafka/libs -name "*.jar"`
+classpath="/home/{{ admin_user }}/tools/jdk/lib:/home/{{ admin_user }}/tools/jdk/jre/lib"
+for item in ${LIB}
+do
+  classpath=${classpath}:${item}
+done
+JVM_OPTS="-Xmx1G -Xms1G -server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -XX:MaxInlineLevel=15 -Djava.awt.headless=true -Xloggc:/home/{{ admin_user }}/server/kafka/kafka/bin/../logs/kafkaServer-gc.log -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M"
+cd ${HOME}
+LOG_CONFIG="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dkafka.logs.dir=/home/{{ admin_user }}/server/kafka/kafka/bin/../logs -Dlog4j.configuration=file:/home/{{ admin_user }}/server/kafka/kafka/bin/../config/log4j.properties"
+/home/{{ admin_user }}/tools/jdk/bin/java ${LOG_CONFIG} ${JVM_OPTS} -cp ${classpath} kafka.Kafka /home/{{ admin_user }}/server/kafka/kafka/config/server.properties
+

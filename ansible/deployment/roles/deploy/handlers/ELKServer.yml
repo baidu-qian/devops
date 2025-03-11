@@ -1,0 +1,9 @@
+---
+- name: start elk
+  shell: "su - {{ admin_user }} -c \"~/ops/elk/bin/service.sh start\""
+
+- name: stop elk
+  shell: "su - {{ admin_user }} -c \"~/ops/elk/bin/service.sh stop\""
+
+- name: restart elk
+  shell: "su - {{ admin_user }} -c \"~/ops/elk/bin/service.sh restart\""

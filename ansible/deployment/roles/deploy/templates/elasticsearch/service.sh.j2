@@ -1,0 +1,93 @@
+#!/bin/bash -
+#这是一个重启es服务的脚本，运行方式，bash service.sh {start|stop|restart|status|reload}
+
+
+PID=$$
+PRG="$0"
+BAS_PRG=`basename ${PRG}`
+BIN=`cd $(dirname "$PRG"); pwd`
+HOME=`dirname "$BIN"`
+LOG=${HOME}/logs
+classpath="."
+PID_NUM=`ps aux | grep ${HOME}/elasticsearch | grep -v 'admin_es_dog' |grep -v "grep"| awk '{print $2}'|wc -l`
+
+start() {
+    PID_NUM=`ps aux | grep ${HOME}/elasticsearch | grep -v 'admin_es_dog' |grep -v "grep"| awk '{print $2}'|wc -l`
+    if [ "${PID_NUM}" == "0" ];then
+	    cd ${HOME}
+      ${HOME}/elasticsearch/bin/elasticsearch -d -p ${BIN}/pid
+	    sleep 2
+	    echo "服务启动成功！"
+      bash ${BIN}/admin_es_dog.sh stop
+      bash ${BIN}/admin_es_dog.sh start ${HOME}/elasticsearch/ ${BIN}/${BAS_PRG}
+      echo "狗启动"
+    else
+        echo "服务已经启动!"
+    fi
+}
+
+
+dog_start() {
+    if [ "${PID_NUM}" == "0" ];then
+	cd ${HOME}
+    ${HOME}/elasticsearch/bin/elasticsearch -d -p ${BIN}/pid
+	sleep 2
+	echo "服务启动成功！"
+    else
+        echo "服务已经启动!"
+    fi
+}
+
+stop() {
+    kill_server
+}
+
+restart() {
+    stop
+    sleep 6
+    start
+}
+
+status() {
+    echo "status"
+}
+
+reload() {
+    echo "reload"
+}
+
+kill_server() {
+    sync
+    bash ${BIN}/admin_es_dog.sh stop
+    echo "狗杀死!"
+    for i in `ps aux | grep ${HOME}/elasticsearch/ | grep -v 'grep'| grep -v "service.sh"|awk '{print $2}'`
+    do
+        kill -9 ${i}
+    done
+    sleep 3
+    echo "服务停止成功！"
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    dog_start)
+        dog_start
+        ;;
+    stop)
+        stop
+        ;;
+    reload)
+        reload
+        ;;
+    restart)
+        restart
+        ;;
+    status)
+        status
+        ;;
+    *)
+        echo "Usage: { start | stop | reload | restart | status | test |dog_start }"
+        exit 1
+esac

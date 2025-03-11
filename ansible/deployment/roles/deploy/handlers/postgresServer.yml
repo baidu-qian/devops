@@ -1,0 +1,9 @@
+---
+- name: start postgres
+  shell: "su - {{ admin_user }} -c \"~/server/postgres/bin/service.sh start\""
+
+- name: stop postgres
+  shell: "su - {{ admin_user }} -c \"~/server/postgres/bin/service.sh stop\""
+
+- name: restart postgres
+  shell: "su - {{ admin_user }} -c \"~/server/postgres/bin/service.sh restart\""

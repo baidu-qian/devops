@@ -1,0 +1,114 @@
+
+admin_user: admin
+admin_password: "admin"
+## postgresql
+# pg_user: bb_pg
+pg_password: admin
+redis_password: admin
+
+## minio
+minio_user: admin
+minio_password: admin4
+
+## elk
+elk_user: elastic
+elk_password: admin
+
+## hbase 
+hbase_tarball_name: server/hbase-1.2.0.tar.gz
+hbase_name: hbase-1.2.0
+hbase_phoenix_tarball_name: server/phoenix-hbase-2.4.0-5.1.3-bin.tar.gz
+hbase_phoenix_path: phoenix-hbase-2.4.0-5.1.3-bin 
+hbase_phoenix_name: phoenix-server-hbase-2.4.0-5.1.3.jar
+
+## zookeeper
+zookeeper_tarball_name: server/apache-zookeeper-3.9.1-bin.tar.gz
+zookeeper_name: apache-zookeeper-3.9.1-bin
+
+## kafka
+kafka_tarball_name: server/kafka_2.12-3.6.1.tgz
+kafka_name: kafka_2.12-3.6.1
+
+## hadoop
+hadoop_tarball_name: server/hadoop-2.10.2.tar.gz
+hadoop_name: hadoop-2.10.2
+
+
+## kibana
+kibana_tarball_name: kibana.tar.gz
+kibanaXpack_tarball_name: kibana-6.8.5.tar.gz
+
+## elasticsearch
+elasticsearch_tarball_name: server/elasticsearch/elasticsearch.tar.gz
+elasticsearchXpack_tarball_name: server/elasticsearch/elasticsearch-6.8.5.tar.gz
+elasticsearch_mapper_murmur3_tarball_name: server/elasticsearch/mapper-murmur3-6.8.5.zip
+
+# minio
+minio_tarball_name: server/minio/images/minio.tar
+
+## docker
+#docker_package: docker-18.09.9.tgz
+docker_package: docker-25.0.2.tgz
+
+####### ops
+##### elk
+elk_tarball_name: ops/elk/elk-7.16.2.tar.gz
+
+##### filebeat
+filebeat_tarball_name: ops/filebeat/filebeat-7.16.2-linux-x86_64.tar.gz
+filebeat_name: filebeat-7.16.2-linux-x86_64
+
+#### portainer
+portainer_tarball_name: ops/portainer/images/portainer.tar
+portainerAgent_tarball_name: ops/portainer/images/portainer-agent.tar
+
+##### jdk
+jdk_tarball_name: jdk1.8.0.tar.gz
+jdk_name: jdk1.8.0
+openjdk_tarball_name: openjdk17u_17.0.9_9.tar.gz
+openjdk_name: jdk-17.0.9+9
+
+prometheus_name: prometheus-2.49.1.linux-amd64.tar.gz
+prometheus_dir_name: prometheus-2.49.1.linux-amd64
+prometheus_link: prometheus
+
+grafana_name: grafana-10.3.1.linux-amd64.tar.gz
+grafana_dir_name: grafana-v10.3.1
+grafana_link: grafana
+
+alertmanager_name: alertmanager-0.26.0.linux-amd64.tar.gz
+alertmanager_dir_name: alertmanager-0.26.0.linux-amd64
+alertmanager_link: alertmanager
+
+kafka_exporter: kafka_exporter-1.7.0.linux-amd64.tar.gz
+kafka_exporter_dir_name: kafka_exporter-1.7.0.linux-amd64
+kafka_link: kafka
+
+elasticsearch_exporter: elasticsearch_exporter-1.7.0.linux-amd64.tar.gz
+elasticsearch_exporter_dir_name: elasticsearch_exporter-1.7.0.linux-amd64
+elasticsearch_link: elasticsearch
+
+nginx_exporter: nginx-vts-exporter-0.10.3.linux-amd64.tar.gz
+nginx_exporter_dir_name: nginx-vts-exporter-0.10.3.linux-amd64
+nginx_link: nginx
+
+node_exporter: node_exporter-1.7.0.linux-amd64.tar.gz
+node_exporter_dir_name: node_exporter-1.7.0.linux-amd64
+node_link: node
+
+process_exporter: process-exporter-0.7.10.linux-amd64.tar.gz
+process_exporter_dir_name: process-exporter-0.7.10.linux-amd64
+process_link: process
+
+redis_exporter: redis_exporter-v1.57.0.linux-amd64.tar.gz
+redis_exporter_dir_name: redis_exporter-v1.57.0.linux-amd64
+redis_link: redis
+
+postgres_exporter: postgres_exporter-0.15.0.linux-amd64.tar.gz 
+postgres_exporter_dir_name: postgres_exporter-0.15.0.linux-amd64
+postgres_link: postgres
+
+zookeeper_exporter: zookeeper_exporter.tar.gz
+zookeeper_exporter_dir_name: zookeeper_exporter
+zookeeper_link: zookeeper
+

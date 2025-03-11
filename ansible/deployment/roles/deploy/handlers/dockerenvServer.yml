@@ -1,0 +1,23 @@
+---
+# - name: start docker
+#   shell: "systemctl daemon-reload && systemctl enable docker && systemctl start docker"
+
+- name: start docker
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: stop docker 
+  systemd:
+    name: docker
+    state: stoped
+    daemon_reload: yes
+
+- name: restart docker 
+  systemd:
+    name: docker
+    state: restarted
+    enabled: yes
+    daemon_reload: yes

@@ -1,0 +1,30 @@
+version: '3.7'
+
+services:
+    redis:
+        container_name: redis
+        image: "{{ harbor_ip }}/admin/redis:7.2.4"
+        restart: always
+        privileged: true
+        environment:
+            TZ: PRC
+        ports:
+            - {{ redis_port }}:{{ redis_port }}/tcp
+            - 1{{ redis_port }}:1{{ redis_port }}/tcp
+        volumes:
+            - /home/{{ admin_user }}/server/redis/conf/redis.conf:/usr/local/etc/redis/redis.conf
+            - /home/{{ admin_user }}/server/redis/data:/data
+            - /home/{{ admin_user }}/server/redis/log/redis.log:/var/log/redis/redis.log
+        command:
+            /usr/local/bin/redis-server /usr/local/etc/redis/redis.conf
+        logging:
+            driver: "json-file"
+            options:
+                max-size: "10m"
+                max-file: "3"
+        networks:
+            - admin_network
+networks:
+  admin_network:
+    external: true
+
