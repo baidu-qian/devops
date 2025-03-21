@@ -1,0 +1,16 @@
+apiVersion: web.example.com/v1
+kind: NginxApp
+metadata:
+  name: nginx-sample
+spec:
+  replicas: 2
+  image: nginx:1.22
+  config: |
+    server {
+        listen 8080;
+        server_name localhost;
+        location / {
+            root /usr/share/nginx/html;
+            index index.html;
+        }
+    }
