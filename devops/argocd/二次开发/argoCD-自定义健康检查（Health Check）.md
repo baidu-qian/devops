@@ -85,14 +85,19 @@ argoCD可以通过Health Check定制开发，来完善美化原本没有的功�
 3. 观察argoCD的web页面
 
     ![](http://viphtl.duckdns.org:15002/i/2025/03/28/67e58ec297b10.png)
+    <img width="683" alt="image" src="https://github.com/user-attachments/assets/84f45dde-393d-44a6-9ce3-e7ab09089228" />
 
     已经变为了
 
     ![](http://viphtl.duckdns.org:15002/i/2025/03/28/67e58d5eef6c1.png)
+    <img width="477" alt="image" src="https://github.com/user-attachments/assets/04ad7846-7ce2-4381-9fd9-c08f1a9847ea" />
 
+ 
     我们尝试删除一个pod
 
     ![](http://viphtl.duckdns.org:15002/i/2025/03/28/67e58d4c0a7bb.png)
+    <img width="742" alt="image" src="https://github.com/user-attachments/assets/82263af0-8239-47d8-8633-418c450abfe0" />
+
 
     测试脚本是正常的
 
