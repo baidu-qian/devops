@@ -5,7 +5,7 @@
 
 * argoCD服务需要安装完成
 
-  [argoCD部署教程-20250327](argoCD部署教程-20250327.md)
+  [argoCD部署教程-20250327](../部署/argoCD/argoCD部署教程-20250327.md)
 * 钉钉新建一个webhook
 
   https://open.dingtalk.com/document/orgapp/assign-a-webhook-url-to-an-internal-chatbot
